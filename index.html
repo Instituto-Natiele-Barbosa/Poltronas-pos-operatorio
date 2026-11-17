@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src https://mgchfprjqbqhcanfnsqc.supabase.co; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -170,7 +171,28 @@ button,a,.pick{touch-action:manipulation;-webkit-tap-highlight-color:transparent
 .ov.opaque .dlg{border-radius:20px;border:1px solid var(--line);max-width:420px}
 .mgw{min-width:720px}
 .v-lista .legend{display:none}
+.tb,.tb-clean{position:relative;z-index:1}
+.fgrid.f2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sbar{position:sticky;bottom:0;background:#fff;padding:10px 0 2px;border-top:1px solid var(--line2);display:flex;flex-direction:column;gap:6px;z-index:2}
+.sbar:has(#hint:empty){gap:0}
+.pick .chip{font-size:11px;padding:2px 8px}
+.item.btnrow{cursor:pointer;gap:8px}
+.item.btnrow:active{background:var(--sage-3)}
+.item.btnrow svg{color:var(--muted);flex:none}
 @media (max-width:699px){
+  .main{padding:12px 12px 120px}
+  h1{font-size:26px}
+  .mlogo{margin:0 0 8px}.mlogo img{height:38px}
+  .top{margin-bottom:12px}
+  .banner{padding:8px 12px;font-size:13px;margin-bottom:10px;gap:8px}
+  .banner .btn2{min-height:36px;padding:0 12px;font-size:13px}
+  .card{padding:14px}
+  .g-kpi{gap:10px;margin-bottom:12px}
+  .kpi{padding:10px 12px}.kpi b{font-size:30px}.kpi small{display:none}
+  .fscroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:2px 14px}
+  .fscroll::-webkit-scrollbar{display:none}
+  .fscroll .pill{flex:none}
+  .item>.row:last-child>.btn2.sm{flex:none;min-height:40px}
   .mgw{min-width:0}
   .mg{gap:3px}
   .mc{min-height:56px;padding:4px 2px;align-items:center;gap:2px}
@@ -256,7 +278,7 @@ var DEFAULT_CFG = {
   msgAtraso: 'Olá, [nome]! O aluguel da poltrona [poltrona] venceu em [retirada]. Podemos passar hoje para retirar? Cada dia extra é cobrado como uma diária ([valor]).',
   msgEntrega: 'Olá, [nome]! Aqui é do [empresa]. A poltrona [poltrona] será entregue em [entrega] e a retirada está prevista para [retirada]. Qualquer dúvida é só responder aqui.'
 };
-var storageOk = true;
+var warnSave = '', storageOk = true, loadProblem = '';
 /* regra da dona: a retirada é no dia seguinte ao último dia de uso. Dados antigos guardavam o último dia de uso. */
 function migrate(o) {
   var cf = o.config || {};
@@ -268,11 +290,21 @@ function migrate(o) {
 function load() {
   try {
     var raw = localStorage.getItem(KEY);
-    if (raw) { var o = JSON.parse(raw); if (o && o.chairs && o.rentals) { o.config = Object.assign({}, DEFAULT_CFG, o.config || {}); return migrate(o); } }
+    if (raw) {
+      var o = null; try { o = JSON.parse(raw); } catch (e2) { }
+      if (o && o.chairs && o.rentals) { o.config = Object.assign({}, DEFAULT_CFG, o.config || {}); return migrate(o); }
+      try { localStorage.setItem(KEY + '-corrompido', raw); } catch (e3) { }
+      loadProblem = 'Os dados guardados neste aparelho estavam ilegíveis. Uma cópia foi separada e a agenda começou com dados de exemplo.';
+    }
   } catch (e) { storageOk = false; }
   return demo();
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { storageOk = false; } cloudDirty(); }
+function save() {
+  var was = storageOk;
+  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOk = true; }
+  catch (e) { storageOk = false; if (was) warnSave = ('Não foi possível guardar neste aparelho (sem espaço ou navegação privada). ' + (cloud.on ? 'Os dados continuam sendo enviados para a nuvem.' : 'Faça um backup agora em Ajustes.')); }
+  cloudDirty();
+}
 function demo() {
   var T = today();
   function R(chair, client, phone, addr, s, e, rate, deliv, ret, pay) {
@@ -433,7 +465,7 @@ var IC = {
    Sem a chave, tudo continua funcionando só neste aparelho. */
 var CLOUD = { url: 'https://mgchfprjqbqhcanfnsqc.supabase.co', key: 'sb_publishable_TwVGA15_VvUhJXUlzlxe9g_siOfKHUI' };
 var CK = 'poltronas-codigo-v1';
-var cloud = { on: !!CLOUD.key, code: '', ver: 0, st: 'idle', busy: false, dirty: false, again: false, timer: null, retry: null, poll: null };
+var cloud = { on: !!CLOUD.key, base: null, pending: false, pendingBoot: false, tries: 0, code: '', ver: 0, st: 'idle', busy: false, dirty: false, again: false, timer: null, retry: null, poll: null };
 var SYNC_TXT = { idle: '', sync: 'Sincronizando…', ok: 'Sincronizado', off: 'Sem conexão', err: 'Erro ao sincronizar' };
 var SYNC_LONG = { idle: '', sync: 'Sincronizando com a nuvem…', ok: 'Sincronizado com a nuvem', off: 'Sem conexão. Salvo neste aparelho e enviado quando voltar.', err: 'Não foi possível sincronizar. Tente de novo.' };
 function storeNote() { return cloud.on ? SYNC_LONG[cloud.st] : (storageOk ? 'Dados salvos neste aparelho' : 'Sem salvamento automático. Use o backup.'); }
@@ -447,13 +479,69 @@ function rpc(fn, body) {
   if (/^eyJ/.test(CLOUD.key)) h.Authorization = 'Bearer ' + CLOUD.key;
   return fetch(CLOUD.url + '/rest/v1/rpc/' + fn, { method: 'POST', headers: h, body: JSON.stringify(body) }).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); });
 }
+var MK = KEY + '-sync';
+function metaSave() { try { localStorage.setItem(MK, JSON.stringify({ base: cloud.base, ver: cloud.ver, dirty: !!(cloud.dirty || cloud.pending) })); } catch (e) { } }
+function metaLoad() { try { var m = JSON.parse(localStorage.getItem(MK) || 'null'); if (m) { cloud.base = m.base || null; cloud.ver = m.ver || 0; cloud.pendingBoot = !!m.dirty; } } catch (e) { } }
 function adopt(r) {
-  S = migrate(Object.assign({}, r.data)); S.config = Object.assign({}, DEFAULT_CFG, S.config || {}); cloud.ver = r.version;
+  S = migrate(Object.assign({}, r.data)); S.config = Object.assign({}, DEFAULT_CFG, S.config || {}); cloud.ver = r.version; cloud.base = JSON.stringify(r.data); cloud.dirty = false; cloud.pending = false; cloud.tries = 0;
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { }
-  cloudSet('ok'); render();
+  metaSave(); cloudSet('ok'); render();
+}
+function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+function occRaw(r, T, hig) { return (r.returnedOn ? i2d(r.returnedOn) : Math.max(i2d(r.end), T)) + hig; }
+/* junta o que esta pessoa fez (local) com o que outra pessoa fez (remoto), tendo como ponto de partida o último estado sincronizado (base) */
+function mergeStates(base, local, remote) {
+  var notes = [], out = JSON.parse(JSON.stringify(remote)), touched = [], T = today(), hig = +((out.config || {}).hig) || 0;
+  ['chairs', 'rentals'].forEach(function (k) {
+    var B = {}, L = {}, R = {}, arr = out[k] || [];
+    (base[k] || []).forEach(function (x) { B[x.id] = x; }); (local[k] || []).forEach(function (x) { L[x.id] = x; }); arr.forEach(function (x) { R[x.id] = x; });
+    var idx = function (id) { for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return i; return -1; };
+    (local[k] || []).forEach(function (l) {
+      var b = B[l.id], r = R[l.id];
+      if (!b) { if (!r) { arr.push(l); if (k === 'rentals') touched.push(l.id); } }
+      else if (!same(l, b)) {
+        if (!r) notes.push('Uma alteração sua foi descartada porque outra pessoa já tinha apagado esse registro.');
+        else if (same(r, b)) { arr[idx(l.id)] = l; if (k === 'rentals') touched.push(l.id); }
+        else notes.push('O mesmo ' + (k === 'rentals' ? 'registro de locação' : 'cadastro de poltrona') + ' foi alterado por outra pessoa ao mesmo tempo. Valeu a alteração dela, confira' + (k === 'rentals' && l.client ? ' (' + l.client + ')' : '') + '.');
+      }
+    });
+    (base[k] || []).forEach(function (b) {
+      if (L[b.id]) return;
+      var r = R[b.id]; if (!r) return;
+      if (same(r, b)) arr.splice(idx(b.id), 1); else notes.push('Você apagou um registro que outra pessoa alterou. Ele foi mantido.');
+    });
+    out[k] = arr;
+  });
+  Object.keys(local).forEach(function (k) {
+    if (k === 'chairs' || k === 'rentals') return;
+    if (k === 'config') { Object.keys(local.config || {}).forEach(function (c) { if (!same(local.config[c], (base.config || {})[c]) && same((remote.config || {})[c], (base.config || {})[c])) { out.config = out.config || {}; out.config[c] = local.config[c]; } }); return; }
+    if (!same(local[k], base[k]) && same(remote[k], base[k])) out[k] = local[k];
+  });
+  /* reservas novas ou alteradas que bateriam com outra locação da mesma poltrona não entram */
+  touched.forEach(function (id) {
+    var a = out.rentals.filter(function (x) { return x.id === id; })[0]; if (!a) return;
+    var clash = out.rentals.filter(function (x) { return x.id !== id && x.chair === a.chair && i2d(a.start) <= occRaw(x, T, hig) && i2d(x.start) <= occRaw(a, T, hig); })[0];
+    if (!clash) return;
+    var code = ((out.chairs.filter(function (c) { return c.id === a.chair; })[0]) || { code: '?' }).code, rem = remote.rentals.filter(function (x) { return x.id === id; })[0];
+    out.rentals = out.rentals.filter(function (x) { return x.id !== id; }); if (rem) out.rentals.push(rem);
+    notes.push('A locação de ' + a.client + ' (poltrona ' + code + ', a partir de ' + a.start.slice(8, 10) + '/' + a.start.slice(5, 7) + ') não foi salva: outra pessoa já usou essa poltrona nesse período. Escolha outra poltrona ou outra data.');
+  });
+  return { state: out, notes: notes };
+}
+function cloudMerge(r) {
+  var base = null; try { base = cloud.base ? JSON.parse(cloud.base) : null; } catch (e) { }
+  cloud.tries = (cloud.tries || 0) + 1;
+  if (!base || cloud.tries > 5) { try { localStorage.setItem(KEY + '-conflito', JSON.stringify(S)); } catch (e) { } adopt(r); say('Não foi possível combinar as alterações. A agenda foi atualizada com a versão mais recente. Confira o que você tinha feito.', null, true); return; }
+  var m = mergeStates(base, S, r.data);
+  try { localStorage.setItem(KEY + '-conflito', JSON.stringify(S)); } catch (e) { }
+  S = migrate(m.state); S.config = Object.assign({}, DEFAULT_CFG, S.config || {}); cloud.ver = r.version; cloud.base = JSON.stringify(r.data);
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { }
+  cloud.dirty = true; metaSave(); render();
+  say(m.notes.length ? 'Combinei suas alterações com as de outra pessoa, mas: ' + m.notes.join(' ') : 'Outra pessoa mexeu na agenda ao mesmo tempo. Suas alterações foram combinadas com as dela.', null, m.notes.length > 0);
+  clearTimeout(cloud.timer); cloud.timer = setTimeout(cloudPush, 300);
 }
 function toGate(err) {
-  cloud.code = ''; try { localStorage.removeItem(CK); } catch (e) { }
+  cloud.code = ''; try { localStorage.removeItem(CK); localStorage.removeItem(MK); } catch (e) { }
   cloudSet('idle'); ui.modal = { t: 'gate', err: err }; render();
 }
 var GATE_ERR = { bad: 'Código incorreto.', locked: 'Muitas tentativas. Aguarde 10 minutos e tente de novo.', none: 'O sistema ainda não foi configurado no banco de dados.' };
@@ -463,8 +551,11 @@ function cloudBoot() {
     if (!r.ok) { toGate(GATE_ERR[r.error] || 'Não foi possível entrar.'); return; }
     try { localStorage.setItem(CK, cloud.code); } catch (e) { }
     ui.modal = null;
-    if (r.empty || !r.data || !r.data.chairs) { cloud.ver = r.version || 0; render(); cloudPush(); }
-    else adopt(r);
+    if (r.empty || !r.data || !r.data.chairs) { cloud.ver = r.version || 0; cloud.base = null; render(); cloudPush(); }
+    else if (cloud.pendingBoot && cloud.base) {
+      cloud.pendingBoot = false;
+      if (r.version === cloud.ver) { cloud.dirty = true; render(); cloudPush(); } else cloudMerge(r);
+    } else adopt(r);
     cloudPoll();
   }).catch(function () {
     var had = false; try { had = !!localStorage.getItem(CK); } catch (e) { }
@@ -474,23 +565,25 @@ function cloudBoot() {
 }
 function cloudDirty() {
   if (!cloud.on || !cloud.code) return;
-  cloud.dirty = true; clearTimeout(cloud.timer); cloud.timer = setTimeout(cloudPush, 700); cloudSet('sync');
+  cloud.dirty = true; metaSave(); clearTimeout(cloud.timer); cloud.timer = setTimeout(cloudPush, 700); cloudSet('sync');
 }
 function cloudPush() {
   if (!cloud.on || !cloud.code) return;
   if (cloud.busy) { cloud.again = true; return; }
-  cloud.busy = true; cloud.dirty = false; cloud.again = false;
+  cloud.busy = true; cloud.dirty = false; cloud.again = false; cloud.pending = true;
+  var sent = JSON.stringify(S);
   rpc('save_state', { p_code: cloud.code, p_data: S, p_expected: cloud.ver }).then(function (r) {
     cloud.busy = false;
-    if (r.ok) { cloud.ver = r.version; if (cloud.again || cloud.dirty) cloudPush(); else cloudSet('ok'); return; }
-    if (r.error === 'conflict') {
-      try { localStorage.setItem(KEY + '-conflito', JSON.stringify(S)); } catch (e) { }
-      adopt(r); say('Outra pessoa mexeu na agenda ao mesmo tempo. Atualizei com a versão mais recente. Confira e refaça sua última alteração.', null, true); return;
+    if (r.ok) {
+      cloud.ver = r.version; cloud.base = sent; cloud.tries = 0;
+      if (cloud.again || cloud.dirty) { metaSave(); cloudPush(); } else { cloud.pending = false; metaSave(); cloudSet('ok'); }
+      return;
     }
+    if (r.error === 'conflict') { cloud.pending = true; cloudMerge(r); return; }
     if (r.error === 'bad' || r.error === 'locked') { toGate(GATE_ERR[r.error]); return; }
-    cloudSet('err');
+    cloud.dirty = true; metaSave(); cloudSet('err');
   }).catch(function () {
-    cloud.busy = false; cloud.dirty = true; cloudSet('off'); clearTimeout(cloud.retry); cloud.retry = setTimeout(cloudPush, 15000);
+    cloud.busy = false; cloud.dirty = true; metaSave(); cloudSet('off'); clearTimeout(cloud.retry); cloud.retry = setTimeout(cloudPush, 15000);
   });
 }
 function cloudCheck() {
@@ -553,7 +646,7 @@ function viewHoje() {
         (alt ? 'A ' + esc(alt.code) + ' está livre nesse período.' : 'Nenhuma outra poltrona está livre nesse período, então a retirada de hoje resolve.') + '</div><div class="row">' + openBtn(nr.id, 'Ver reserva') + '</div></div>';
     }
   });
-  R.filter(function (r) { return r.st === 'proxima'; }).forEach(function (r) {
+  R.filter(function (r) { return r.st === 'proxima' && r.e !== T; }).forEach(function (r) {
     al += '<div class="alert amber"><b>' + esc(r.code) + ': retirada ' + rel(r.left) + '</b><div>' + esc(r.client) + (r.addr ? ' · ' + esc(r.addr) : '') + '</div><div class="row">' + waBtn(r, 'lembrete', 'Avisar ' + r.client.split(' ')[0]) + openBtn(r.id, 'Ver locação') + '</div></div>';
   });
   if (!al) al = '<div class="alert teal"><b>Tudo em dia.</b><div>Nenhuma retirada atrasada, próxima ou conflito de reserva.</div></div>';
@@ -564,9 +657,6 @@ function viewHoje() {
 
   /* tarefas de hoje */
   var tk = '';
-  R.filter(function (r) { return r.st === 'atrasada'; }).forEach(function (r) {
-    tk += taskRow(r, 'atrasada', 'Retirada atrasada', 'Venceu em ' + fd(r.e), 'return', 'Confirmar retirada', 'atraso');
-  });
   R.filter(function (r) { return r.ret == null && r.e === T && r.delivered; }).forEach(function (r) {
     tk += taskRow(r, 'proxima', 'Retirada', 'Hoje' + at(r.tOut), 'return', 'Confirmar retirada', 'lembrete');
   });
@@ -591,8 +681,8 @@ function viewHoje() {
     return '<button type="button" class="pick" data-act="' + (c.cur ? 'open' : 'chairs') + '" data-id="' + (c.cur ? c.cur.id : '') + '"><span class="row" style="justify-content:space-between;width:100%"><b>' + esc(c.code) + '</b>' + chip(c.key) + '</span><span class="small">' + esc(c.count) + '</span></button>';
   }).join('');
 
-  h += '<div class="grid g-2"><div class="stack"><div class="card stack"><h2>Precisa da sua atenção</h2>' + al + '</div><div class="card"><h2>Agenda de hoje</h2><div style="margin-top:6px">' + tk + '</div></div></div>' +
-    '<div class="stack"><div class="card"><h2>Próximos 10 dias</h2><div style="margin-top:6px">' + upH + '</div></div><div class="card stack"><h2>Poltronas agora</h2><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr))">' + chairs + '</div></div></div></div>';
+  h += '<div class="grid g-2"><div class="stack"><div class="card stack"><h2>Precisa da sua atenção</h2>' + al + '</div><div class="card"><h2>Para hoje</h2><div style="margin-top:6px">' + tk + '</div></div></div>' +
+    '<div class="stack"><div class="card"><h2>Próximos 10 dias</h2><div style="margin-top:6px">' + upH + '</div></div><div class="card stack"><h2>Poltronas agora</h2><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr))">' + chairs + '</div></div></div></div>';
   return h;
 }
 function taskRow(r, k, kind, when, act, cta, wa) {
@@ -715,8 +805,8 @@ function locListHtml() {
     .sort(function (a, b) { return order[a.st] - order[b.st] || (a.st === 'encerrada' ? b.s - a.s : a.s - b.s); });
   if (!rows.length) return '<div class="muted" style="padding:12px 0">Nenhuma locação aqui.</div>';
   return rows.map(function (r) {
-    return '<div class="item"><div style="min-width:0;flex:1 1 200px"><div class="row" style="gap:8px"><b>' + esc(r.code) + '</b><span style="font-weight:600">' + esc(r.client) + '</span></div><div class="muted small">' + fd(r.s) + ' → ' + fd(r.e) + ' · ' + pl(r.days, 'diária', 'diárias') + (r.late ? ' + ' + pl(r.late, 'extra', 'extras') : '') + '</div></div>' +
-      '<div class="row">' + chip(r.st) + (r.st !== 'reserva' ? chip(r.paid ? 'pago' : 'pendente', r.paid ? 'Pago' : 'A receber') : '') + '<b>' + brl(r.total) + '</b>' + openBtn(r.id, 'Detalhes') + '</div></div>';
+    return '<button type="button" class="item btnrow" data-act="open" data-id="' + r.id + '"><span style="min-width:0;flex:1 1 200px"><span class="row" style="gap:8px"><b>' + esc(r.code) + '</b><b style="font-weight:600">' + esc(r.client) + '</b></span><span class="muted small" style="display:block">' + fd(r.s) + ' → ' + fd(r.e) + at(r.tOut) + ' · ' + pl(r.days, 'diária', 'diárias') + (r.late ? ' + ' + pl(r.late, 'extra', 'extras') : '') + '</span></span>' +
+      '<span class="row" style="flex-wrap:nowrap">' + chip(r.st) + (r.st !== 'reserva' ? chip(r.paid ? 'pago' : 'pendente', r.paid ? 'Pago' : 'A receber') : '') + '<b>' + brl(r.total) + '</b>' + ic(IC.right, 18) + '</span></button>';
   }).join('');
 }
 function owedLine() {
@@ -727,9 +817,9 @@ function owedLine() {
 function viewLocacoes() {
   if (!S.chairs.length) return emptyChairs();
   var fl = locFilters();
-  return '<div class="card stack"><div class="row" role="group" aria-label="Filtrar locações">' + fl.map(function (f) {
+  return '<div class="card stack"><input class="inp" id="q" type="search" aria-label="Buscar por cliente ou poltrona" value="' + esc(ui.q) + '" placeholder="Buscar cliente ou poltrona"><div class="row fscroll" role="group" aria-label="Filtrar locações">' + fl.map(function (f) {
     return '<button type="button" class="pill" data-act="filter" data-id="' + f[0] + '" aria-pressed="' + (ui.filter === f[0]) + '">' + f[1] + ' (' + C.R.filter(f[2]).length + ')</button>';
-  }).join('') + '</div>' + owedLine() + '<div><label class="l" for="q">Buscar por cliente ou poltrona</label><input class="inp" id="q" type="search" value="' + esc(ui.q) + '" placeholder="Digite um nome"></div><div id="locList">' + locListHtml() + '</div></div>';
+  }).join('') + '</div>' + owedLine() + '<div id="locList">' + locListHtml() + '</div></div>';
 }
 
 /* poltronas */
@@ -775,7 +865,7 @@ function clientListHtml() {
     else if (c.done > 0) { k = 'livre'; label = 'Sempre no prazo'; }
     else { k = 'encerrada'; label = 'Primeira locação'; }
     var now = c.cur ? 'Com a ' + c.cur.code + ' até ' + fd(c.cur.e) : c.res ? 'Reserva da ' + c.res.code + ' em ' + fd(c.res.s) : 'Sem locação ativa';
-    var wa = waNumber(c.phone) ? '<a class="btn2" target="_blank" rel="noopener noreferrer" href="https://wa.me/' + waNumber(c.phone) + '">WhatsApp</a>' : '';
+    var wa = waNumber(c.phone) ? '<a class="btn2 sm" target="_blank" rel="noopener noreferrer" href="https://wa.me/' + waNumber(c.phone) + '">WhatsApp</a>' : '';
     return '<div class="item"><div style="min-width:0;flex:1 1 200px"><b>' + esc(c.name) + '</b><div class="muted small">' + esc(c.phone || 'Sem telefone') + ' · ' + pl(c.n, 'locação', 'locações') + '</div><div class="small">' + esc(now) + '</div></div><div class="row">' + chip(k, label) + wa + '</div></div>';
   }).join('');
 }
@@ -855,15 +945,15 @@ function rentalForm(f) {
   return dlg(edit ? 'Editar locação' : 'Nova locação',
     '<form id="rentalForm" class="stack" autocomplete="off"><div class="field"><label class="l" for="r-client">Nome do cliente</label><input class="inp" id="r-client" list="clist" required value="' + esc(f.client) + '" placeholder="Ex.: Maria da Silva"><datalist id="clist">' + Object.keys(clients).map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist></div>' +
     '<div class="fgrid"><div class="field"><label class="l" for="r-phone">WhatsApp</label><input class="inp" id="r-phone" inputmode="tel" value="' + esc(f.phone) + '" placeholder="(00) 00000-0000" maxlength="16"></div><div class="field"><label class="l" for="r-addr">Endereço de entrega</label><input class="inp" id="r-addr" value="' + esc(f.addr) + '" placeholder="Rua, número, bairro"></div></div>' +
-    '<div class="fgrid"><div class="field"><label class="l" for="r-start">Data da entrega</label><input class="inp" id="r-start" type="date" required value="' + esc(f.start) + '"></div><div class="field"><label class="l" for="r-days">Quantidade de dias</label><input class="inp" id="r-days" type="number" min="1" required value="' + esc(f.days) + '"></div></div>' +
+    '<div class="fgrid f2"><div class="field"><label class="l" for="r-start">Data da entrega</label><input class="inp" id="r-start" type="date" required value="' + esc(f.start) + '"></div><div class="field"><label class="l" for="r-days">Quantidade de dias</label><input class="inp" id="r-days" type="number" min="1" required value="' + esc(f.days) + '"></div></div>' +
     '<div class="row" id="durs"></div>' +
-    '<div class="fgrid"><div class="field"><label class="l" for="r-tin">Horário da entrega <span class="muted small" style="font-weight:400">(opcional)</span></label><input class="inp" id="r-tin" type="time" value="' + esc(f.tIn || '') + '"></div><div class="field"><label class="l" for="r-tout">Horário da retirada <span class="muted small" style="font-weight:400">(opcional)</span></label><input class="inp" id="r-tout" type="time" value="' + esc(f.tOut || '') + '"></div></div>' +
+    '<div class="fgrid f2"><div class="field"><label class="l" for="r-tin">Hora da entrega <span class="muted small" style="font-weight:400">(opcional)</span></label><input class="inp" id="r-tin" type="time" value="' + esc(f.tIn || '') + '"></div><div class="field"><label class="l" for="r-tout">Hora da retirada <span class="muted small" style="font-weight:400">(opcional)</span></label><input class="inp" id="r-tout" type="time" value="' + esc(f.tOut || '') + '"></div></div>' +
     '<div class="fgrid"><div class="field"><label class="l" for="r-rate">Valor da diária (R$)</label><input class="inp" id="r-rate" type="number" min="0" step="0.01" value="' + esc(f.rate) + '"></div><div class="field"><label class="l" for="r-note">Observação</label><input class="inp" id="r-note" value="' + esc(f.note) + '" placeholder="Opcional"></div></div>' +
     '<label class="row small" style="gap:10px"><input type="checkbox" id="r-deliv" style="width:22px;height:22px"' + (f.delivered ? ' checked' : '') + '> <span>A poltrona já foi entregue</span></label>' +
     '<label class="row small" style="gap:10px"><input type="checkbox" id="r-paid" style="width:22px;height:22px"' + (f.paid ? ' checked' : '') + '> <span>Pagamento já recebido</span></label>' +
     '<div><div class="l">Poltrona livre nesse período</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr))" id="picker"></div><div id="sugg" class="small" style="margin-top:8px"></div></div>' +
-    '<div id="sum"></div><div id="hint" class="small" style="font-weight:600;color:var(--red-ink)"></div>' +
-    '<div class="row"><button class="btn" type="submit" id="saveBtn">' + (edit ? 'Salvar alterações' : 'Salvar locação') + '</button></div></form>', edit ? 'Editar locação' : 'Nova locação');
+    '<div id="sum"></div><div class="sbar"><div id="hint" class="small" style="font-weight:600;color:var(--red-ink)"></div>' +
+    '<button class="btn" type="submit" id="saveBtn" style="width:100%">' + (edit ? 'Salvar alterações' : 'Salvar locação') + '</button></div></form>', edit ? 'Editar locação' : 'Nova locação');
 }
 function confirmDlg(title, text, act, id, label) {
   return dlg(title, '<p style="margin:0">' + esc(text) + '</p><div class="row"><button type="button" class="btn danger" data-act="' + act + '" data-id="' + esc(id || '') + '">' + esc(label) + '</button><button type="button" class="btn2" data-act="closeModal">Cancelar</button></div>');
@@ -877,13 +967,13 @@ function renderModal() {
     else if (m.t === 'chair') h = chairForm(m.id ? S.chairs.filter(function (c) { return c.id === m.id; })[0] : null, m.code);
     else if (m.t === 'confirm') h = confirmDlg(m.title, m.text, m.act, m.id, m.label);
     else if (m.t === 'backup') {
-      h = dlg('Cópia de segurança', '<p class="muted small" style="margin:0">Guarde este texto em um lugar seguro (por exemplo, mande para você mesma no WhatsApp). Para restaurar, cole ele em "Restaurar backup".</p><textarea class="inp" id="bk" readonly style="min-height:160px;font-size:12px">' + esc(JSON.stringify(S)) + '</textarea><div class="row"><button type="button" class="btn" data-act="copyBackup">Copiar texto</button><button type="button" class="btn2" data-act="downloadBackup">Baixar arquivo</button></div>');
+      h = dlg('Cópia de segurança', '<p class="muted small" style="margin:0">Guarde este texto em um lugar seguro (por exemplo, mande para você mesma no WhatsApp). Para restaurar, cole ele em "Restaurar backup".</p><textarea class="inp" id="bk" readonly style="min-height:160px;font-size:12px">' + esc(backupText()) + '</textarea><div class="row"><button type="button" class="btn" data-act="copyBackup">Copiar texto</button><button type="button" class="btn2" data-act="downloadBackup">Baixar arquivo</button></div>');
     } else if (m.t === 'restore') {
       h = dlg('Restaurar backup', '<p class="muted small" style="margin:0">Cole o texto do backup ou escolha o arquivo. Os dados atuais serão substituídos.</p><textarea class="inp" id="rs" style="min-height:140px;font-size:12px" placeholder="Cole aqui"></textarea><div class="field"><label class="l" for="rf">Ou escolha o arquivo</label><input class="inp" id="rf" type="file" accept=".json,application/json,text/plain"></div><div id="rsErr" class="small" style="color:var(--red-ink);font-weight:600"></div><div class="row"><button type="button" class="btn" data-act="doRestore">Restaurar</button></div>');
     }
   }
   el.innerHTML = h;
-  if (h) { if (m.t === 'rental') { buildDurations(); refreshForm(); } var f = el.querySelector('input,textarea,select'); if (f && m.t !== 'detail') f.focus(); }
+  if (h) { if (m.t === 'rental') { buildDurations(); refreshForm(); } var f = el.querySelector('input,textarea,select'); if (f && m.t !== 'detail') f.focus(); else { var dd = el.querySelector('.dlg'); if (dd) { dd.setAttribute('tabindex', '-1'); dd.focus(); } } }
 }
 function buildDurations() {
   var el = $('#durs'); if (!el) return;
@@ -905,7 +995,7 @@ function refreshForm() {
   var free = C.CH.filter(function (c) { return ok && !chairBlocked(c.id, ui.form.id) && !conflict(c.id, s, e, ui.form.id); }).length, sg = '';
   if (ok && !free && C.CH.length) {
     var best = null;
-    C.CH.forEach(function (c) { if (chairBlocked(c.id, ui.form.id)) return; for (var d = Math.max(s, T); d <= Math.max(s, T) + 120; d++) { if (!conflict(c.id, d, d + days - 1, ui.form.id)) { if (!best || d < best.d) best = { d: d, c: c }; break; } } });
+    C.CH.forEach(function (c) { if (chairBlocked(c.id, ui.form.id)) return; for (var d = Math.max(s, T); d <= Math.max(s, T) + 120; d++) { if (!conflict(c.id, d, d + days, ui.form.id)) { if (!best || d < best.d) best = { d: d, c: c }; break; } } });
     sg = '<b style="color:var(--red-ink)">Nenhuma poltrona livre nesse período.</b>' + (best ? ' A mais cedo é a ' + esc(best.c.code) + ', a partir de ' + wd(best.d) + ' ' + fd(best.d) + '. <button type="button" class="btn2" data-act="useDate" data-id="' + d2i(best.d) + '" data-chair="' + best.c.id + '" style="min-height:40px;margin-top:6px">Usar esta data</button>' : '');
   }
   $('#sugg').innerHTML = sg;
@@ -921,8 +1011,9 @@ function paintToast() {
   el.innerHTML = '<div><div>' + esc(t.msg) + '</div>' + (t.links || []).map(function (l) { return '<a target="_blank" rel="noopener noreferrer" href="' + esc(l.href) + '">' + esc(l.label) + '</a>'; }).join('') + '<div><button type="button" class="btn2" data-act="closeToast" style="min-height:36px;padding:0 12px">Fechar</button></div></div>';
 }
 function say(msg, links, err) {
+  if (warnSave) { msg = warnSave + ' ' + msg; err = true; warnSave = ''; }
   ui.toast = { msg: msg, links: links, err: err }; paintToast();
-  clearTimeout(toastTimer); toastTimer = setTimeout(function () { ui.toast = null; paintToast(); }, (links && links.length) ? 14000 : 6000);
+  clearTimeout(toastTimer); toastTimer = setTimeout(function () { ui.toast = null; paintToast(); }, (links && links.length) || err ? 14000 : 6000);
 }
 
 /* ---------- render geral ---------- */
@@ -962,7 +1053,10 @@ var H = {
   newRentalChair: function (id) { openForm('', id); },
   editRental: function (id) { openForm(id); },
   open: function (id) { ui.modal = { t: 'detail', id: id }; render(); },
-  closeModal: function () { ui.modal = null; ui.form = null; render(); },
+  closeModal: function () {
+    var o = ui.opener; ui.modal = null; ui.form = null; render();
+    if (o) { var q = Array.prototype.slice.call(document.querySelectorAll('[data-act="' + o.act + '"]' + (o.id ? '[data-id="' + o.id + '"]' : ''))).filter(function (n) { return n.offsetParent !== null || n.id === 'fab'; })[0]; if (q) q.focus(); }
+  },
   backdrop: function (id, el, e) { if (e.target === el) H.closeModal(); },
   closeToast: function () { ui.toast = null; paintToast(); },
   view: function (id) { ui.view = id; render(); },
@@ -972,27 +1066,36 @@ var H = {
   owed: function () { ui.filter = 'areceber'; ui.q = ''; go('locacoes'); },
   dur: function (id) { $('#r-days').value = id; refreshForm(); },
   pickChair: function (id) { ui.form.chair = id; refreshForm(); },
-  deliver: function (id) {
-    var r = rentalById(id); if (!r) return; var T = C.T;
-    if (i2d(r.start) > T) {
-      var len = i2d(r.end) - i2d(r.start), cf = conflict(r.chair, T, T + len, r.id);
+  deliver: function (id, el, ev, force) {
+    var r = rentalById(id); if (!r) return; var T = C.T, early = i2d(r.start) > T, len = i2d(r.end) - i2d(r.start);
+    if (early) {
+      var cf = conflict(r.chair, T, T + len, r.id);
       if (cf) { say('Ainda não dá para entregar: a ' + chairById(r.chair).code + ' está com ' + cf.client + ' até ' + fd(cf.e) + '.', null, true); return; }
+      if (!force) { ui.modal = { t: 'confirm', title: 'Entregar antes da data marcada?', text: 'A entrega estava marcada para ' + fd(i2d(r.start)) + '. Entregando hoje, a locação começa hoje e a retirada passa de ' + fd(i2d(r.end)) + ' para ' + fd(T + len) + ', mantendo as ' + pl(len, 'diária', 'diárias') + ' combinadas.', act: 'deliverOk', id: id, label: 'Entregar hoje' }; render(); return; }
       r.start = d2i(T); r.end = d2i(T + len);
     }
-    r.delivered = true; save(); render(); say('Entrega da ' + chairById(r.chair).code + ' para ' + r.client + ' confirmada.');
+    ui.modal = null; r.delivered = true; save(); render(); say('Entrega da ' + chairById(r.chair).code + ' para ' + r.client + ' confirmada.');
   },
-  return: function (id) {
+  deliverOk: function (id) { H.deliver(id, null, null, true); },
+  return: function (id, el, ev, force) {
     var r = rentalById(id); if (!r) return; var T = C.T, late = Math.max(0, T - i2d(r.end)), early = Math.max(0, i2d(r.end) - T);
-    r.returnedOn = d2i(T); r.delivered = true; save(); render();
+    if (!r.delivered && !force) {
+      ui.modal = { t: 'confirm', title: 'A entrega nunca foi confirmada', text: 'Não há registro de que a ' + chairById(r.chair).code + ' foi entregue para ' + r.client + '. Se ela saiu mesmo, pode confirmar a retirada: a entrega e a retirada serão registradas. Se não saiu, cancele e corrija a locação.', act: 'returnOk', id: id, label: 'Confirmar retirada mesmo assim' }; render(); return;
+    }
+    ui.modal = null; r.returnedOn = d2i(T); r.delivered = true; save(); render();
     say('Retirada da ' + chairById(r.chair).code + ' confirmada.' + (late ? ' Diárias extras: ' + brl(late * r.rate) + '.' : '') + (early ? ' Devolvida ' + pl(early, 'dia', 'dias') + ' antes do combinado; o valor do contrato foi mantido.' : '') + (!r.paid ? ' Falta marcar o pagamento.' : '') + (C.hig ? ' A poltrona fica em higienização por ' + pl(C.hig, 'dia', 'dias') + '.' : ''));
   },
+  returnOk: function (id) { H.return(id, null, null, true); },
   pay: function (id) {
     var r = rentalById(id); if (!r) return; r.paid = !r.paid; save(); render();
     say(r.paid ? 'Pagamento de ' + r.client + ' marcado como recebido.' : 'Pagamento de ' + r.client + ' voltou para "a receber".');
   },
   useDate: function (id, el) { $('#r-start').value = id; if (el.dataset.chair) ui.form.chair = el.dataset.chair; syncDelivered(); refreshForm(); },
   extend: function (id, el) {
-    var r = rentalById(id), n = +el.dataset.n, ne = i2d(r.end) + n, s = i2d(r.start);
+    var r = rentalById(id), n = +el.dataset.n;
+    if (!r || r.returnedOn) { say('Esta locação já foi encerrada.', null, true); return; }
+    if (!(n > 0) || n !== Math.floor(n)) { say('Informe uma prorrogação válida.', null, true); return; }
+    var ne = i2d(r.end) + n, s = i2d(r.start);
     var cf = conflict(r.chair, s, ne, r.id);
     if (cf) { say('Não dá para prorrogar: a ' + chairById(r.chair).code + ' já está reservada para ' + cf.client + ' a partir de ' + fd(cf.s) + '.', null, true); return; }
     r.end = d2i(ne); save(); render(); say('Locação prorrogada. Nova retirada em ' + fd(ne) + '.');
@@ -1014,31 +1117,52 @@ var H = {
   doDemo: function () { var cfg = S.config; S = demo(); S.config = cfg; ui.modal = null; save(); go('hoje'); say('Exemplo carregado.'); },
   logout: function () {
     clearInterval(cloud.poll); clearTimeout(cloud.timer); clearTimeout(cloud.retry);
-    try { localStorage.removeItem(KEY); } catch (e) { }
+    try { localStorage.removeItem(KEY); localStorage.removeItem(MK); } catch (e) { }
     S = { v: 1, v2: true, demo: false, chairs: [], rentals: [], config: Object.assign({}, S.config) }; cloud.ver = 0; ui.toast = null; paintToast(); toGate('');
   },
   backup: function () { ui.modal = { t: 'backup' }; render(); },
   restore: function () { ui.modal = { t: 'restore' }; render(); },
   copyBackup: function () {
-    var ta = $('#bk'), txt = JSON.stringify(S);
+    var ta = $('#bk'), txt = backupText();
     function fallback() { ta.focus(); ta.select(); say('Texto selecionado. Toque em copiar no menu do celular.'); }
     try { navigator.clipboard.writeText(txt).then(function () { say('Backup copiado.'); }, fallback); } catch (e) { fallback(); }
   },
   downloadBackup: function () {
     try {
-      var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(S)], { type: 'application/json' }));
+      var a = document.createElement('a'), u = URL.createObjectURL(new Blob([backupText()], { type: 'application/json' })); a.href = u; setTimeout(function () { URL.revokeObjectURL(u); }, 5000);
       a.download = 'backup-poltronas-' + d2i(C.T) + '.json'; document.body.appendChild(a); a.click(); a.remove();
       say('Se o arquivo não baixar, use "Copiar texto".');
     } catch (e) { say('Não foi possível baixar. Use "Copiar texto".', null, true); }
   },
-  doRestore: function () { restoreFrom(($('#rs') || {}).value || ''); }
+  doRestore: function () { restoreFrom(($('#rs') || {}).value || ''); },
+  doRestoreOk: function () {
+    var o = ui.restoreStaged; ui.restoreStaged = null; if (!o) return;
+    delete o.exportedAt; delete o.schema; o.config = Object.assign({}, DEFAULT_CFG, o.config || {}); S = migrate(o); ui.modal = null; save(); go('hoje'); say('Backup restaurado.');
+  }
 };
+function backupText() { return JSON.stringify(Object.assign({}, S, { schema: 2, exportedAt: new Date().toISOString() })); }
+var ISO = /^\d{4}-\d{2}-\d{2}$/;
+function backupError(o) {
+  if (!o || typeof o !== 'object' || !Array.isArray(o.chairs) || !Array.isArray(o.rentals)) return 'Esse texto não parece um backup deste sistema.';
+  var ids = {}, i;
+  for (i = 0; i < o.chairs.length; i++) { var c = o.chairs[i]; if (!c || !c.id || typeof c.code !== 'string' || !c.code) return 'O backup tem uma poltrona sem código (item ' + (i + 1) + ').'; ids[c.id] = 1; }
+  for (i = 0; i < o.rentals.length; i++) {
+    var r = o.rentals[i];
+    if (!r || !r.id || typeof r.client !== 'string' || !r.client.trim()) return 'O backup tem uma locação sem cliente (item ' + (i + 1) + ').';
+    if (!ids[r.chair]) return 'A locação de ' + r.client + ' aponta para uma poltrona que não existe no backup.';
+    if (!ISO.test(r.start || '') || !ISO.test(r.end || '') || r.end < r.start) return 'A locação de ' + r.client + ' tem datas inválidas.';
+    if (isNaN(+r.rate)) return 'A locação de ' + r.client + ' tem valor inválido.';
+  }
+  return '';
+}
 function restoreFrom(txt) {
-  try {
-    var o = JSON.parse(txt);
-    if (!o || !Array.isArray(o.chairs) || !Array.isArray(o.rentals)) throw new Error('x');
-    o.config = Object.assign({}, DEFAULT_CFG, o.config || {}); S = migrate(o); ui.modal = null; save(); go('hoje'); say('Backup restaurado.');
-  } catch (e) { var el = $('#rsErr'); if (el) el.textContent = 'Esse texto não parece um backup válido.'; }
+  var o = null; try { o = JSON.parse(txt); } catch (e) { }
+  var err = o ? backupError(o) : 'Esse texto não parece um backup deste sistema.';
+  if (err) { var el = $('#rsErr'); if (el) el.textContent = err; return; }
+  var when = ''; if (o.exportedAt) { var d = new Date(o.exportedAt); if (!isNaN(d)) when = ' feito em ' + p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear() + ' às ' + p2(d.getHours()) + ':' + p2(d.getMinutes()); }
+  ui.restoreStaged = o;
+  ui.modal = { t: 'confirm', title: 'Substituir os dados atuais?', text: 'Este backup' + when + ' tem ' + pl(o.chairs.length, 'poltrona', 'poltronas') + ' e ' + pl(o.rentals.length, 'locação', 'locações') + '. Hoje o sistema tem ' + pl(S.chairs.length, 'poltrona', 'poltronas') + ' e ' + pl(S.rentals.length, 'locação', 'locações') + '. Ao confirmar, esses dados são substituídos' + (cloud.on ? ' em todos os aparelhos' : '') + '. Se o backup for antigo, você perde o que foi feito depois dele.', act: 'doRestoreOk', label: 'Substituir pelo backup' };
+  render();
 }
 
 document.addEventListener('click', function (e) {
@@ -1050,6 +1174,7 @@ document.addEventListener('click', function (e) {
   }
   var el = e.target.closest('[data-act]'); if (!el) return;
   var fn = H[el.dataset.act]; if (!fn) return;
+  if (!ui.modal && !el.closest('.dlg')) ui.opener = { act: el.dataset.act, id: el.dataset.id || '' };
   if (el.dataset.act !== 'backdrop') e.preventDefault();
   fn(el.dataset.id, el, e);
 });
@@ -1119,12 +1244,23 @@ document.addEventListener('submit', function (e) {
     save(); render(); say('Ajustes salvos.');
   }
 });
-document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && ui.modal && ui.modal.t !== 'gate') H.closeModal(); });
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && ui.modal && ui.modal.t !== 'gate') { H.closeModal(); return; }
+  if (e.key === 'Tab' && ui.modal) {
+    var d = document.querySelector('#modal .dlg'); if (!d) return;
+    var f = Array.prototype.slice.call(d.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])')).filter(function (n) { return n.offsetParent !== null; });
+    if (!f.length) { e.preventDefault(); return; }
+    var first = f[0], last = f[f.length - 1], a = document.activeElement;
+    if (e.shiftKey && (a === first || !d.contains(a))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (a === last || !d.contains(a))) { e.preventDefault(); first.focus(); }
+  }
+});
 window.addEventListener('hashchange', function () { var h = location.hash.replace('#', ''); if (TITLES[h] && h !== ui.screen) { ui.screen = h; ui.modal = null; render(); } });
 
 var h0 = (location.hash || '').replace('#', ''); if (TITLES[h0]) ui.screen = h0;
-if (cloud.on) { try { cloud.code = localStorage.getItem(CK) || ''; } catch (e) { } if (cloud.code) { cloud.st = 'sync'; } else ui.modal = { t: 'gate' }; }
+if (cloud.on) { try { cloud.code = localStorage.getItem(CK) || ''; } catch (e) { } if (cloud.code) { metaLoad(); cloud.st = 'sync'; } else ui.modal = { t: 'gate' }; }
 render();
+if (loadProblem) say(loadProblem, null, true);
 if (cloud.on && cloud.code) cloudBoot();
 })();
 </script>
