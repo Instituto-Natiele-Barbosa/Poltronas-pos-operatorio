@@ -231,6 +231,24 @@ button,a,.pick{touch-action:manipulation;-webkit-tap-highlight-color:transparent
   .toast{bottom:24px}
 }
 @media (prefers-reduced-motion:no-preference){.dlg{animation:up .18s ease-out}@keyframes up{from{transform:translateY(16px);opacity:.6}to{transform:none;opacity:1}}}
+
+.ct{background:#fff;color:#30363C;font:14px/1.5 Cambria,Georgia,'Times New Roman',serif;border:1px solid var(--line);border-radius:12px;padding:22px 20px}
+.ct-t{font:700 17px/1.3 'Inter',Aptos,Arial,sans-serif;color:#1E3142;text-align:center;margin:0 0 16px}
+.ct-i{margin:0 0 4px}.ct-h{font:700 12px 'Inter',Aptos,Arial,sans-serif;color:#1E3142;margin:18px 0 8px;padding-bottom:5px;border-bottom:1px solid #DCE2E4;page-break-after:avoid}
+.ct-p{margin:0 0 6px;text-align:justify}.ct-l{margin:0 0 2px 16px;text-indent:-8px}.ct-l.o{text-indent:0}
+.ct-d{text-align:right;margin:18px 0 0;page-break-after:avoid}
+.ct-s{text-align:center;margin:0;page-break-inside:avoid}.ct-s.l{margin-top:34px;color:#737B81}.ct-s.n{font-weight:700}.ct-s.r{font-size:12px;color:#737B81}
+.alert.amber.no-print{margin-bottom:12px}
+@media print{
+  @page{size:A4;margin:16mm 18mm}
+  html,body{background:#fff!important}
+  body>*:not(#modal){display:none!important}
+  #modal .ov{position:static!important;background:none!important;display:block!important;padding:0!important}
+  #modal .dlg{outline:0!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;border:0!important;border-radius:0!important;padding:0!important;max-width:none!important;width:100%!important;animation:none!important;background:#fff!important;display:block!important}
+  .no-print,.dlg-h{display:none!important}
+  .ct{border:0;border-radius:0;padding:0;font-size:10.5pt;line-height:1.42}
+  .ct-h{margin:12px 0 6px}.ct-p{margin-bottom:4px}.ct-s.l{margin-top:26px}
+}
 </style>
 </head>
 <body>
@@ -273,7 +291,8 @@ function $(s) { return document.querySelector(s); }
 
 /* ---------- dados ---------- */
 var DEFAULT_CFG = {
-  empresa: 'Instituto Natiéle Barbosa', rate: 35, days: 15, aviso: 2, hig: 1, cidade: '',
+  empresa: 'Instituto Natiéle Barbosa', rate: 65, days: 15, aviso: 2, hig: 1, cidade: '',
+  planos: [[10, 650], [15, 700], [20, 750]], locNome: 'Natiéle Barbosa da Silva', locCpf: '019.241.815-76', locTel: '(73) 99986-3415',
   msgLembrete: 'Olá, [nome]! Aqui é do [empresa]. A retirada da poltrona [poltrona] está marcada para [retirada]. Qual o melhor horário para passarmos aí?',
   msgAtraso: 'Olá, [nome]! O aluguel da poltrona [poltrona] venceu em [retirada]. Podemos passar hoje para retirar? Cada dia extra é cobrado como uma diária ([valor]).',
   msgEntrega: 'Olá, [nome]! Aqui é do [empresa]. A poltrona [poltrona] será entregue em [entrega] e a retirada está prevista para [retirada]. Qualquer dúvida é só responder aqui.'
@@ -284,8 +303,20 @@ function migrate(o) {
   var cf = o.config || {};
   if (cf.empresa === 'Conforto em Casa') cf.empresa = DEFAULT_CFG.empresa;
   ['msgLembrete', 'msgEntrega'].forEach(function (k) { if (cf[k]) cf[k] = cf[k].replace('Aqui é da [empresa]', 'Aqui é do [empresa]'); });
+  if (!cf._v3) { if (+cf.rate === 35) cf.rate = DEFAULT_CFG.rate; cf._v3 = true; o.config = cf; }
   if (!o.v2) { o.rentals.forEach(function (r) { if (r.end) r.end = d2i(i2d(r.end) + 1); }); o.v2 = true; }
   return o;
+}
+function planList() {
+  var p = (S.config.planos || DEFAULT_CFG.planos).filter(function (x) { return x && +x[0] > 0 && +x[1] >= 0; }).map(function (x) { return [+x[0], +x[1]]; });
+  return p.sort(function (a, b) { return a[0] - b[0]; });
+}
+/* menos dias que o menor plano: diária. Entre planos: o plano que cobre os dias. Acima do maior: maior plano + diária por dia extra. */
+function calcPrice(days) {
+  var p = planList(), d = +S.config.rate || 0;
+  if (!p.length || days < p[0][0]) return Math.round(days * d * 100) / 100;
+  for (var i = 0; i < p.length; i++) if (days <= p[i][0]) return p[i][1];
+  var L = p[p.length - 1]; return Math.round((L[1] + (days - L[0]) * d) * 100) / 100;
 }
 function load() {
   try {
@@ -332,7 +363,7 @@ function demo() {
   };
 }
 var S = load();
-var ui = { screen: 'hoje', view: (window.matchMedia && window.matchMedia('(max-width:959px)').matches) ? 'lista' : 'linha', mOff: 0, filter: 'ativas', q: '', cq: '', modal: null, form: null, toast: null };
+var ui = { screen: 'hoje', view: (window.matchMedia && window.matchMedia('(max-width:959px)').matches) ? 'lista' : 'linha', mOff: 0, filter: 'ativas', cf: '', pf: 'todas', pq: '', q: '', cq: '', modal: null, form: null, toast: null };
 var toastTimer = null;
 
 /* ---------- cálculo ---------- */
@@ -351,7 +382,8 @@ function ctx() {
     else if (e < T) st = 'atrasada';
     else st = e - T <= AV ? 'proxima' : 'ativa';
     var days = e - s, late = ret != null ? Math.max(0, ret - e) : Math.max(0, T - e);
-    return Object.assign({}, r, { s: s, e: e, ret: ret, st: st, days: days, late: late, left: e - T, total: (days + late) * r.rate, code: chairById(r.chair).code,
+    var base = r.price != null && r.price !== '' ? +r.price || 0 : days * r.rate, frete = +r.frete || 0;
+    return Object.assign({}, r, { s: s, e: e, ret: ret, st: st, days: days, late: late, left: e - T, base: base, total: base + frete + late * r.rate, due: r.paid ? 0 : Math.max(0, base + frete + late * r.rate - (+r.entry || 0)), code: chairById(r.chair).code,
       de: ret != null ? Math.min(e, ret) : e, early: ret != null ? Math.max(0, e - ret) : 0, unconf: !r.delivered && ret == null && s <= T && e < T, paid: !!r.paid, avisos: r.avisos || {} });
   });
   var CH = S.chairs.filter(function (c) { return c.state !== 'aposentada'; }).sort(function (a, b) { return a.code.localeCompare(b.code, 'pt-BR', { numeric: true }); }).map(function (c) {
@@ -405,6 +437,16 @@ function nextChairCode() {
 
 /* ---------- mensagens e links ---------- */
 function digits(s) { return String(s || '').replace(/\D/g, ''); }
+function fmtCpf(v) {
+  var d = digits(v).slice(0, 11), o = d.slice(0, 3);
+  if (d.length > 3) o += '.' + d.slice(3, 6); if (d.length > 6) o += '.' + d.slice(6, 9); if (d.length > 9) o += '-' + d.slice(9, 11);
+  return o;
+}
+function cpfValid(d) {
+  d = digits(d); if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false;
+  for (var t = 9; t < 11; t++) { var sum = 0; for (var i = 0; i < t; i++) sum += +d[i] * (t + 1 - i); var dv = (sum * 10) % 11 % 10; if (dv !== +d[t]) return false; }
+  return true;
+}
 function fmtPhone(v) {
   var d = digits(v).slice(0, 11);
   if (d.length <= 2) return d.length ? '(' + d : '';
@@ -652,7 +694,7 @@ function viewHoje() {
   if (!al) al = '<div class="alert teal"><b>Tudo em dia.</b><div>Nenhuma retirada atrasada, próxima ou conflito de reserva.</div></div>';
   var owed = R.filter(function (r) { return !r.paid && r.st !== 'reserva'; });
   if (owed.length) {
-    al += '<div class="alert blue"><b>' + pl(owed.length, 'pagamento pendente', 'pagamentos pendentes') + '</b><div>Total a receber até agora: ' + brl(owed.reduce(function (a, r) { return a + r.total; }, 0)) + '.</div><div class="row"><button type="button" class="btn2" data-act="owed">Ver quem falta pagar</button></div></div>';
+    al += '<div class="alert blue"><b>' + pl(owed.length, 'pagamento pendente', 'pagamentos pendentes') + '</b><div>Total a receber até agora: ' + brl(owed.reduce(function (a, r) { return a + r.due; }, 0)) + '.</div><div class="row"><button type="button" class="btn2" data-act="owed">Ver quem falta pagar</button></div></div>';
   }
 
   /* tarefas de hoje */
@@ -793,15 +835,42 @@ function viewAgenda() {
 function locFilters() {
   return [['ativas', 'Em andamento', function (r) { return r.st === 'ativa' || r.st === 'proxima' || r.st === 'atrasada' || r.st === 'entrega'; }],
     ['atrasadas', 'Atrasadas', function (r) { return r.st === 'atrasada'; }],
-    ['reservas', 'Reservadas', function (r) { return r.st === 'reserva'; }],
+    ['futuras', 'Agenda', function (r) { return r.st !== 'encerrada'; }],
+    ['reservas', 'Próximas', function (r) { return r.st === 'reserva'; }],
     ['encerradas', 'Encerradas', function (r) { return r.st === 'encerrada'; }],
     ['areceber', 'A receber', function (r) { return !r.paid && r.st !== 'reserva'; }],
     ['todas', 'Todas', function () { return true; }]];
 }
+function chairSlots(cid) {
+  var hig = C.hig, mine = C.R.filter(function (r) { return r.chair === cid; });
+  var cur = C.T;
+  mine.filter(function (r) { return r.st === 'encerrada'; }).forEach(function (r) { cur = Math.max(cur, occEnd(r) + 1); });
+  var out = [];
+  mine.filter(function (r) { return r.st !== 'encerrada'; }).sort(function (a, b) { return a.s - b.s; }).forEach(function (r) {
+    var b = r.s - hig - 1;
+    if (b - cur >= 1) out.push({ a: cur, b: b, n: b - cur, open: false, before: r });
+    cur = Math.max(cur, occEnd(r) + 1);
+  });
+  out.push({ a: cur, b: null, n: 0, open: true });
+  return out;
+}
+function slotText(sl) { return sl.open ? 'Livre a partir de ' + fd(sl.a) + ' · sem reservas à frente' : 'Livre de ' + fd(sl.a) + ' a ' + fd(sl.b) + ' · cabem até ' + pl(sl.n, 'diária', 'diárias'); }
+function chairSheetHtml(cid) {
+  var rows = C.R.filter(function (r) { return r.chair === cid && r.st !== 'encerrada'; }).sort(function (a, b) { return a.s - b.s; });
+  var slots = chairSlots(cid), html = '', used = {};
+  rows.forEach(function (r) {
+    slots.forEach(function (sl, i) { if (!used[i] && !sl.open && sl.before === r) { used[i] = 1; html += '<div class="item" style="border:2px dashed var(--blue);background:#EEF4EE;border-radius:10px;padding:10px 12px"><b style="color:var(--blue)">' + slotText(sl) + '</b></div>'; } });
+    html += '<button type="button" class="item btnrow" data-act="open" data-id="' + r.id + '"><span style="min-width:0;flex:1 1 160px"><b>' + esc(r.client) + '</b><span class="muted small" style="display:block">' + fd(r.s) + ' → ' + fd(r.e) + at(r.tOut) + ' · ' + pl(r.days, 'diária', 'diárias') + (r.late ? ' + ' + pl(r.late, 'extra', 'extras') : '') + '</span></span><span class="row" style="flex-wrap:nowrap">' + chip(r.st) + ic(IC.right, 18) + '</span></button>';
+  });
+  var last = slots[slots.length - 1];
+  html += '<div class="item" style="border:2px dashed var(--blue);background:#EEF4EE;border-radius:10px;padding:10px 12px"><b style="color:var(--blue)">' + slotText(last) + '</b></div>';
+  return html;
+}
 function locListHtml() {
+  if (ui.cf && ui.filter === 'futuras' && chairById(ui.cf)) return chairSheetHtml(ui.cf);
   var fl = locFilters(), act = fl.filter(function (f) { return f[0] === ui.filter; })[0][2], q = ui.q.trim().toLowerCase();
   var order = { atrasada: 0, entrega: 1, proxima: 2, ativa: 3, reserva: 4, encerrada: 5 };
-  var rows = C.R.filter(act).filter(function (r) { return !q || r.client.toLowerCase().indexOf(q) >= 0 || r.code.toLowerCase().indexOf(q) >= 0; })
+  var rows = C.R.filter(act).filter(function (r) { return !ui.cf || r.chair === ui.cf; }).filter(function (r) { return !q || r.client.toLowerCase().indexOf(q) >= 0 || r.code.toLowerCase().indexOf(q) >= 0; })
     .sort(function (a, b) { return order[a.st] - order[b.st] || (a.st === 'encerrada' ? b.s - a.s : a.s - b.s); });
   if (!rows.length) return '<div class="muted" style="padding:12px 0">Nenhuma locação aqui.</div>';
   return rows.map(function (r) {
@@ -812,13 +881,16 @@ function locListHtml() {
 function owedLine() {
   var o = C.R.filter(function (r) { return !r.paid && r.st !== 'reserva'; });
   if (!o.length) return '';
-  return '<div class="small muted">A receber: <b style="color:var(--ink)">' + brl(o.reduce(function (a, r) { return a + r.total; }, 0)) + '</b> em ' + pl(o.length, 'locação', 'locações') + '.</div>';
+  return '<div class="small muted">A receber: <b style="color:var(--ink)">' + brl(o.reduce(function (a, r) { return a + r.due; }, 0)) + '</b> em ' + pl(o.length, 'locação', 'locações') + '.</div>';
 }
 function viewLocacoes() {
   if (!S.chairs.length) return emptyChairs();
   var fl = locFilters();
   return '<div class="card stack"><input class="inp" id="q" type="search" aria-label="Buscar por cliente ou poltrona" value="' + esc(ui.q) + '" placeholder="Buscar cliente ou poltrona"><div class="row fscroll" role="group" aria-label="Filtrar locações">' + fl.map(function (f) {
     return '<button type="button" class="pill" data-act="filter" data-id="' + f[0] + '" aria-pressed="' + (ui.filter === f[0]) + '">' + f[1] + ' (' + C.R.filter(f[2]).length + ')</button>';
+  }).join('') + '</div><div class="row fscroll" role="group" aria-label="Filtrar por poltrona"><button type="button" class="pill" data-act="chairF" data-id="" aria-pressed="' + (!ui.cf) + '">Todas as poltronas</button>' + C.CH.map(function (c) {
+    var n = C.R.filter(function (r) { return r.chair === c.id && fl.filter(function (f) { return f[0] === ui.filter; })[0][2](r); }).length;
+    return '<button type="button" class="pill" data-act="chairF" data-id="' + c.id + '" aria-pressed="' + (ui.cf === c.id) + '">' + esc(c.code) + ' (' + n + ')</button>';
   }).join('') + '</div>' + owedLine() + '<div id="locList">' + locListHtml() + '</div></div>';
 }
 
@@ -828,7 +900,22 @@ function viewPoltronas() {
   var head = '<div class="row" style="justify-content:space-between;margin-bottom:14px"><span class="muted">' + pl(C.CH.length, 'poltrona em uso', 'poltronas em uso') + '</span><button class="btn" type="button" data-act="newChair">Adicionar poltrona</button></div>';
   if (!S.chairs.length) return head + emptyChairs();
   var retired = S.chairs.filter(function (c) { return c.state === 'aposentada'; });
-  return head + '<div class="grid g-cards">' + C.CH.map(function (c) {
+  var pfs = [['todas', 'Todas', function () { return true; }],
+    ['com', 'Com cliente', function (c) { return !!c.cur; }],
+    ['livres', 'Livres', function (c) { return !c.cur && c.key !== 'manut' && c.key !== 'higiene'; }],
+    ['atencao', 'Retirada próxima ou atraso', function (c) { return !!c.cur && (c.cur.st === 'proxima' || c.cur.st === 'atrasada'); }],
+    ['reservas', 'Com reserva à frente', function (c) { return C.R.some(function (r) { return r.chair === c.id && r.st === 'reserva'; }); }]];
+  var pq = ui.pq.trim().toLowerCase();
+  function pMatch(c) {
+    if (!pq) return true;
+    return c.code.toLowerCase().indexOf(pq) >= 0 || C.R.some(function (r) { return r.chair === c.id && r.st !== 'encerrada' && r.client.toLowerCase().indexOf(pq) >= 0; });
+  }
+  var pfun = pfs.filter(function (f) { return f[0] === ui.pf; })[0][2];
+  var shown = C.CH.filter(function (c) { return pfun(c) && pMatch(c); });
+  head += '<div class="card stack" style="margin-bottom:14px"><input class="inp" id="pq" type="search" aria-label="Buscar poltrona ou cliente" value="' + esc(ui.pq) + '" placeholder="Buscar poltrona ou cliente"><div class="row fscroll" role="group" aria-label="Filtrar poltronas">' + pfs.map(function (f) {
+    return '<button type="button" class="pill" data-act="chairPF" data-id="' + f[0] + '" aria-pressed="' + (ui.pf === f[0]) + '">' + f[1] + ' (' + C.CH.filter(f[2]).length + ')</button>';
+  }).join('') + '</div></div>';
+  return head + (shown.length ? '' : '<div class="card muted">Nenhuma poltrona com esse filtro.</div>') + '<div class="grid g-cards">' + shown.map(function (c) {
     var mine = C.R.filter(function (r) { return r.chair === c.id; }), occ = 0, strip = '';
     for (var d = M.m0; d <= M.m1; d++) if (mine.some(function (r) { return r.s <= d && d <= r.de + r.late; })) occ++;
     mine.forEach(function (r) {
@@ -839,10 +926,19 @@ function viewPoltronas() {
       });
     });
     return '<div class="card stack" style="gap:12px"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="big">' + esc(c.code) + '</div><div class="muted small">' + esc(c.desc) + '</div></div>' + chip(c.key) + '</div>' +
-      '<div><div style="font-weight:700;font-size:18px">' + esc(c.count) + '</div><div>' + esc(c.sub) + '</div><div class="muted small">' + esc(c.avail) + '</div></div>' +
+      '<div><div style="font-weight:700;font-size:18px">' + esc(c.count) + '</div><div>' + esc(c.sub) + '</div><div class="muted small">' + esc(c.avail) + '</div></div>' + nextHtml(c) +
       '<div><div style="display:grid;grid-template-columns:repeat(' + n + ',minmax(0,1fr));height:12px;background:#E8EFE8;border-radius:4px;overflow:hidden">' + strip + '</div><div class="muted small row" style="justify-content:space-between;margin-top:4px"><span>Ocupação: ' + Math.round(occ / n * 100) + '%</span><span>' + M.label + '</span></div></div>' +
       '<div class="row">' + (c.cur ? openBtn(c.cur.id, 'Ver locação atual') : c.key === 'manut' ? '' : '<button type="button" class="btn2" data-act="newRentalChair" data-id="' + c.id + '">Nova locação</button>') + '<button type="button" class="btn2" data-act="editChair" data-id="' + c.id + '">Editar</button></div></div>';
   }).join('') + '</div>' + (retired.length ? '<div class="card stack" style="margin-top:16px"><h2>Aposentadas</h2><p class="muted small" style="margin:0">Vendidas ou fora de uso definitivo. Não aparecem na agenda, mas o histórico das locações fica guardado.</p>' + retired.map(function (c) { return '<div class="item"><div style="flex:1 1 160px"><b>' + esc(c.code) + '</b><div class="muted small">' + esc(c.desc) + '</div></div><button type="button" class="btn2" data-act="reactivate" data-id="' + c.id + '">Reativar</button></div>'; }).join('') + '</div>' : '');
+}
+function nextHtml(c) {
+  var nx = C.R.filter(function (r) { return r.chair === c.id && r.st === 'reserva'; }).sort(function (a, b) { return a.s - b.s; });
+  var sl = chairSlots(c.id).slice(0, 2).map(function (x) { return '<div class="small" style="color:var(--blue);font-weight:600">' + slotText(x) + '</div>'; }).join('');
+  var all = '<button type="button" class="btn2" data-act="chairNext" data-id="' + c.id + '">Ver agenda completa da ' + esc(c.code) + '</button>';
+  if (!nx.length) return '<div class="stack" style="gap:6px">' + sl + '<div class="muted small">Sem próximas locações.</div>' + all + '</div>';
+  return '<div class="stack" style="gap:6px">' + sl + '<div class="small" style="font-weight:700">Próximas locações (' + nx.length + ')</div>' + nx.slice(0, 3).map(function (r) {
+    return '<button type="button" class="item btnrow" style="padding:8px 10px" data-act="open" data-id="' + r.id + '"><span style="flex:1 1 140px;min-width:0"><b style="font-weight:600">' + esc(r.client) + '</b><span class="muted small" style="display:block">' + fd(r.s) + ' → ' + fd(r.e) + ' · ' + pl(r.days, 'diária', 'diárias') + '</span></span>' + ic(IC.right, 16) + '</button>';
+  }).join('') + all + '</div>';
 }
 function emptyChairs() {
   return '<div class="card stack"><h2>Nenhuma poltrona cadastrada</h2><p class="muted" style="margin:0">Cadastre as poltronas para começar a registrar locações.</p><div class="row"><button class="btn" type="button" data-act="newChair">Adicionar poltrona</button></div></div>';
@@ -879,11 +975,14 @@ function viewAjustes() {
   var vars = ['[nome]', '[poltrona]', '[entrega]', '[retirada]', '[valor]', '[empresa]'].join('  ');
   return '<div class="grid g-2"><form class="card stack" id="cfgForm" autocomplete="off"><h2>Padrões</h2>' +
     '<div class="field"><label class="l" for="c-emp">Nome do seu negócio</label><input class="inp" id="c-emp" value="' + esc(c.empresa) + '"></div>' +
-    '<div class="fgrid"><div class="field"><label class="l" for="c-rate">Diária padrão (R$)</label><input class="inp" id="c-rate" type="number" min="0" step="0.01" value="' + esc(c.rate) + '"></div>' +
+    '<div class="fgrid"><div class="field"><label class="l" for="c-rate">Diária (menos dias que o menor plano e dias extras) (R$)</label><input class="inp" id="c-rate" type="number" min="0" step="0.01" value="' + esc(c.rate) + '"></div>' +
     '<div class="field"><label class="l" for="c-days">Dias padrão da locação</label><input class="inp" id="c-days" type="number" min="1" value="' + esc(c.days) + '"></div>' +
     '<div class="field"><label class="l" for="c-av">Avisar quantos dias antes da retirada</label><select class="inp" id="c-av">' + [1, 2, 3, 5].map(function (n) { return '<option value="' + n + '"' + (C.av === n ? ' selected' : '') + '>' + pl(n, 'dia', 'dias') + '</option>'; }).join('') + '</select></div>' +
     '<div class="field"><label class="l" for="c-cid">Cidade (ajuda o mapa a achar o endereço)</label><input class="inp" id="c-cid" value="' + esc(c.cidade) + '" placeholder="Ex.: Teixeira de Freitas, BA"></div>' +
     '<div class="field"><label class="l" for="c-hig">Dias de higienização após a retirada</label><select class="inp" id="c-hig"><option value="0"' + (+c.hig === 0 ? ' selected' : '') + '>Nenhum</option><option value="1"' + (+c.hig === 1 ? ' selected' : '') + '>1 dia</option><option value="2"' + (+c.hig === 2 ? ' selected' : '') + '>2 dias</option></select></div></div>' +
+    '<h3>Planos de locação</h3><p class="muted small" style="margin:0">Quem fica menos dias que o menor plano paga a diária. Quem fica entre dois planos paga o plano que cobre os dias. Cada dia acima do maior plano é cobrado como diária.</p>' +
+    [0, 1, 2].map(function (i) { var pp = planList()[i] || ['', '']; return '<div class="fgrid f2"><div class="field"><label class="l" for="c-pd' + i + '">Plano ' + (i + 1) + ': dias</label><input class="inp" id="c-pd' + i + '" type="number" min="1" inputmode="numeric" value="' + esc(pp[0]) + '"></div><div class="field"><label class="l" for="c-pv' + i + '">Valor (R$)</label><input class="inp" id="c-pv' + i + '" type="number" min="0" step="0.01" inputmode="decimal" value="' + esc(pp[1]) + '"></div></div>'; }).join('') +
+    '<h3>Dados do locador (contrato)</h3><div class="field"><label class="l" for="c-ln">Nome completo</label><input class="inp" id="c-ln" value="' + esc(c.locNome || '') + '"></div><div class="fgrid f2"><div class="field"><label class="l" for="c-lc">CPF</label><input class="inp" id="c-lc" inputmode="numeric" maxlength="14" value="' + esc(c.locCpf || '') + '"></div><div class="field"><label class="l" for="c-lt">Telefone</label><input class="inp" id="c-lt" inputmode="tel" maxlength="16" value="' + esc(c.locTel || '') + '"></div></div>' +
     '<h3>Mensagens do WhatsApp</h3><p class="muted small" style="margin:0">Use estas palavras entre colchetes: ' + vars + '. Elas são trocadas pelos dados da locação. O WhatsApp abre com o texto pronto e você só toca em enviar.</p>' +
     '<div class="field"><label class="l" for="c-m1">Lembrete de retirada</label><textarea class="inp" id="c-m1">' + esc(c.msgLembrete) + '</textarea></div>' +
     '<div class="field"><label class="l" for="c-m2">Aviso de atraso</label><textarea class="inp" id="c-m2">' + esc(c.msgAtraso) + '</textarea></div>' +
@@ -921,15 +1020,139 @@ function detailHtml(r) {
   else if (r.st === 'ativa' || r.st === 'proxima') acts = '<button type="button" class="btn" data-act="return" data-id="' + r.id + '">Confirmar retirada</button><div class="row" style="flex-wrap:nowrap"><button type="button" class="btn2" style="flex:1" data-act="extend" data-id="' + r.id + '" data-n="1">Prorrogar +1 dia</button><button type="button" class="btn2" style="flex:1" data-act="extend" data-id="' + r.id + '" data-n="7">Prorrogar +7 dias</button></div>' + waBtn(r, 'lembrete', 'Enviar lembrete no WhatsApp');
   else if (r.st === 'entrega') acts = '<button type="button" class="btn" data-act="deliver" data-id="' + r.id + '">Confirmar entrega</button>' + waBtn(r, 'entrega', 'Confirmar entrega no WhatsApp');
   else if (r.st === 'reserva') acts = '<button type="button" class="btn" data-act="deliver" data-id="' + r.id + '">Entregar agora</button>' + waBtn(r, 'entrega', 'Confirmar reserva no WhatsApp');
-  acts += '<button type="button" class="btn2" data-act="pay" data-id="' + r.id + '">' + (r.paid ? 'Pagamento recebido. Desfazer' : 'Marcar como pago (' + brl(r.total) + ')') + '</button>';
+  acts += '<button type="button" class="btn2" data-act="pay" data-id="' + r.id + '">' + (r.paid ? 'Pagamento recebido. Desfazer' : 'Marcar como pago (' + brl(r.due || r.total) + ')') + '</button>';
+  acts += '<button type="button" class="btn2" data-act="contract" data-id="' + r.id + '">Gerar contrato</button>';
   acts += mapBtn(r);
   if (r.st === 'reserva' || r.st === 'entrega') acts += '<a class="btn2" target="_blank" rel="noopener noreferrer" href="' + esc(gcal(r, 'in')) + '">Colocar a entrega no Google Agenda</a>';
   if (r.ret == null) acts += '<a class="btn2" target="_blank" rel="noopener noreferrer" href="' + esc(gcal(r)) + '">Colocar a retirada no Google Agenda</a>';
   acts += '<div class="row" style="flex-wrap:nowrap"><button type="button" class="btn2" style="flex:1" data-act="editRental" data-id="' + r.id + '">Editar</button><button type="button" class="btn2" style="flex:1;color:var(--red-ink)" data-act="askDelete" data-id="' + r.id + '">Excluir</button></div>';
   return dlg(r.client, '<div class="row" style="gap:10px"><span class="muted small" style="font-weight:600">Poltrona ' + esc(r.code) + '</span>' + chip(r.st) + '<b>' + esc(count) + '</b></div>' +
     '<div><div class="bar"><i style="width:' + pct + '%;background:' + color + '"></i></div><div class="muted small row" style="justify-content:space-between;margin-top:4px"><span>Entrega ' + fd(r.s) + '</span><span>Retirada ' + fd(r.e) + '</span></div></div>' +
-    '<div>' + dl('Entrega e retirada', fd(r.s) + at(r.tIn) + ' a ' + fd(r.e) + at(r.tOut)) + dl('Último dia de uso', fd(r.e - 1)) + dl('Diárias', pl(r.days, 'dia', 'dias') + (r.late ? ' + ' + pl(r.late, 'extra', 'extras') : '')) + dl('Valor da diária', brl(r.rate)) + dl('Total', brl(r.total)) + dl('Pagamento', r.paid ? 'Recebido' : 'A receber') + (r.early ? dl('Devolução', fd(r.ret) + ' (valor do contrato mantido)') : '') + dl('WhatsApp', r.phone || 'Não informado') + dl('Endereço', r.addr || 'Não informado') + (r.note ? dl('Observação', r.note) : '') + '</div>' +
+    '<div>' + dl('Entrega e retirada', fd(r.s) + at(r.tIn) + ' a ' + fd(r.e) + at(r.tOut)) + dl('Último dia de uso', fd(r.e - 1)) + dl('Diárias', pl(r.days, 'dia', 'dias') + (r.late ? ' + ' + pl(r.late, 'extra', 'extras') : '')) + dl('Valor da locação', brl(r.base)) + (r.frete ? dl('Frete', brl(r.frete)) : '') + dl('Diária extra (atraso)', brl(r.rate)) + dl('Total', brl(r.total)) + (r.entry ? dl('Entrada paga', brl(r.entry) + (r.entryDate ? ' em ' + fd(i2d(r.entryDate)) : '')) : '') + dl('Pagamento', r.paid ? 'Recebido' : 'A receber') + (r.early ? dl('Devolução', fd(r.ret) + ' (valor do contrato mantido)') : '') + dl('WhatsApp', r.phone || 'Não informado') + dl('Endereço', r.addr || 'Não informado') + (r.note ? dl('Observação', r.note) : '') + '</div>' +
     '<div><b>Linha do tempo</b>' + steps + '</div><div class="stack" style="gap:8px">' + acts + '</div>', 'Detalhes da locação');
+}
+var CT = {"title": "CONTRATO DE LOCAÇÃO DE POLTRONA AUTOMÁTICA PARA PÓS-OPERATÓRIO", "c1h": "CLÁUSULA 1 – OBJETO", "c1i": "1.1. O presente contrato tem por objeto a locação de uma Poltrona Automática para Pós-Operatório, equipada com:", "c1b": ["• Sistema de inclinação automática;", "• Sistema de elevação automática;", "• Função de alívio da tensão;", "• Sistema de aquecimento;", "• Controle remoto de acionamento."], "c1n": "1.2. O equipamento é entregue em perfeito estado de funcionamento e higiene, sendo vistoriado pelo LOCATÁRIO no ato da entrega.", "c2h": "CLÁUSULA 2 – PRAZO DE LOCAÇÃO", "c3h": "CLÁUSULA 3 – VALORES", "c3i": "3.1. O LOCATÁRIO opta pelo seguinte plano:", "c32": "3.2. O valor do frete será calculado de acordo com a localidade de entrega e retirada.", "c4h": "CLÁUSULA 4 – OBRIGAÇÕES DO LOCATÁRIO", "c4": ["4.1. Utilizar a poltrona apenas para a finalidade a que se destina.", "4.2. Não realizar reparos, adaptações ou modificações no equipamento.", "4.3. Manter o equipamento protegido de líquidos, animais domésticos e situações que possam causar danos.", "4.4. Não transferir, emprestar ou sublocar o equipamento a terceiros."], "c5h": "CLÁUSULA 5 – DANOS E RESPONSABILIDADES", "c5": ["5.1. O LOCATÁRIO será responsável por danos causados por mau uso, negligência ou utilização inadequada.", "5.2. Em caso de danos provocados por animais domésticos, líquidos, quedas ou qualquer situação decorrente de uso inadequado, o LOCATÁRIO responderá integralmente pelos custos de reparo ou substituição.", "5.3. Caso o equipamento fique indisponível para novas locações em razão dos danos causados, o LOCATÁRIO poderá ser responsabilizado pelos prejuízos decorrentes."], "c6h": "CLÁUSULA 6 – ENTREGA E RETIRADA", "c6": ["6.1. A entrega e a retirada ocorrerão em data e horário previamente agendados.", "6.2. É obrigatória a presença de um responsável no local para recebimento e devolução.", "6.3. Em caso de ausência do responsável, será cobrada nova taxa de deslocamento para reagendamento."], "c7h": "CLÁUSULA 7 – CANCELAMENTO", "c7": ["7.1. Cancelamentos realizados até 10 dias antes da entrega terão devolução integral dos valores pagos, exceto eventuais taxas administrativas.", "7.2. Após a entrega do equipamento não haverá reembolso, salvo em caso de defeito que impossibilite sua utilização e não haja substituição disponível."], "c8h": "CLÁUSULA 8 – GARANTIA", "c8": ["8.1. O LOCADOR garante o perfeito funcionamento da poltrona durante o período de locação.", "8.2. Em caso de defeito técnico não causado pelo LOCATÁRIO, será providenciada substituição do equipamento, conforme disponibilidade."], "c9h": "CLÁUSULA 9 – DISPOSIÇÕES FINAIS", "c9": ["9.1. Este contrato poderá ser firmado fisicamente ou por aceite digital através de WhatsApp.", "9.2. As partes elegem o foro da Comarca de Teixeira de Freitas/BA para dirimir quaisquer dúvidas oriundas deste contrato."]};
+
+var MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+function contractBlocks(r) {
+  var c = S.config, B = [], blank = '________________', miss = [];
+  function v(x, label) { x = (x || '').trim(); if (!x) { miss.push(label); return blank; } return x; }
+  var dias = r.days, pl_ = planList(), sel = -1;
+  if (pl_.length && dias >= pl_[0][0]) { sel = pl_.length - 1; for (var i = 0; i < pl_.length; i++) if (dias <= pl_[i][0]) { sel = i; break; } }
+  var base = r.base, frete = +r.frete || 0, total = base + frete, entry = +r.entry || 0;
+  B.push({ k: 'title', t: CT.title });
+  B.push({ k: 'info', b: 'LOCADOR(A):', t: ' ' + v(c.locNome, 'nome do locador (Ajustes)') + ', CPF: ' + v(c.locCpf, 'CPF do locador (Ajustes)') + ', telefone: ' + v(c.locTel, 'telefone do locador (Ajustes)') + '.' });
+  B.push({ k: 'info', b: 'LOCATÁRIO(A):', t: ' ' + r.client + ', CPF: ' + v(r.cpf, 'CPF do cliente') });
+  B.push({ k: 'info', b: 'Endereço:', t: ' ' + v(r.addr, 'endereço') });
+  B.push({ k: 'info', b: 'Cidade:', t: ' ' + v(r.city, 'cidade do cliente') });
+  B.push({ k: 'info', b: 'Telefone:', t: ' ' + v(r.phone, 'telefone do cliente') });
+  B.push({ k: 'head', t: CT.c1h }); B.push({ k: 'p', t: CT.c1i }); CT.c1b.forEach(function (t) { B.push({ k: 'bul', t: t }); }); B.push({ k: 'p', t: CT.c1n });
+  B.push({ k: 'head', t: CT.c2h });
+  B.push({ k: 'info2', b: 'Data da entrega:', t: ' ' + fdl(r.s) + (th(r.tIn) ? ' às ' + th(r.tIn) : '') });
+  B.push({ k: 'info2', b: 'Data da retirada:', t: ' ' + fdl(r.e) + (th(r.tOut) ? ' às ' + th(r.tOut) : '') });
+  B.push({ k: 'info2', b: 'Prazo contratado:', t: ' ' + pl(dias, 'dia', 'dias') + '.' });
+  B.push({ k: 'head', t: CT.c3h }); B.push({ k: 'p', t: CT.c3i });
+  pl_.forEach(function (p, i) { B.push({ k: 'opt', t: '(' + (i === sel ? 'x' : ' ') + ') ' + pl(p[0], 'dia', 'dias') + ' – ' + brl(p[1]) }); });
+  if (sel < 0 || Math.abs(pl_[sel][1] - base) > 0.005) B.push({ k: 'opt', t: 'Valor da locação (' + pl(dias, 'dia', 'dias') + '): ' + brl(base) });
+  B.push({ k: 'p', t: CT.c32 });
+  B.push({ k: 'info2', b: 'Valor do frete:', t: ' ' + brl(frete) });
+  B.push({ k: 'info2', b: 'Valor total da locação:', t: ' ' + brl(total) });
+  var pay;
+  if (r.paid) pay = '3.3. O pagamento integral (' + brl(total) + ') foi realizado.';
+  else if (entry > 0) pay = '3.3. Foi feito pagamento de ' + brl(entry) + (r.entryDate ? ' no dia ' + fdl(i2d(r.entryDate)) : '') + ' e o restante (' + brl(Math.max(0, total - entry)) + ') será feito no dia da entrega.';
+  else pay = '3.3. O pagamento integral (' + brl(total) + ') será feito no dia da entrega.';
+  B.push({ k: 'p', t: pay });
+  [['c4h', 'c4'], ['c5h', 'c5'], ['c6h', 'c6'], ['c7h', 'c7'], ['c8h', 'c8'], ['c9h', 'c9']].forEach(function (x) { B.push({ k: 'head', t: CT[x[0]] }); CT[x[1]].forEach(function (t) { B.push({ k: 'p', t: t }); }); });
+  var d = new Date(C.T * MS);
+  B.push({ k: 'date', t: 'Teixeira de Freitas/BA, ' + p2(d.getUTCDate()) + ' de ' + MES[d.getUTCMonth()] + ' de ' + d.getUTCFullYear() });
+  B.push({ k: 'sigline' }); B.push({ k: 'signame', t: v(c.locNome, 'nome do locador (Ajustes)') }); B.push({ k: 'sigrole', t: 'LOCADOR' });
+  B.push({ k: 'sigline' }); B.push({ k: 'signame', t: r.client }); B.push({ k: 'sigrole', t: 'LOCATÁRIO(A)' });
+  B.miss = miss.filter(function (x, i, a) { return a.indexOf(x) === i; });
+  return B;
+}
+function contractHtml(B) {
+  return '<div class="ct">' + B.map(function (b) {
+    var t = esc(b.t || '');
+    switch (b.k) {
+      case 'title': return '<h1 class="ct-t">' + t + '</h1>';
+      case 'info': case 'info2': return '<p class="ct-i"><b>' + esc(b.b) + '</b>' + t + '</p>';
+      case 'head': return '<h2 class="ct-h">' + t + '</h2>';
+      case 'p': return '<p class="ct-p">' + t + '</p>';
+      case 'bul': return '<p class="ct-l">' + t + '</p>';
+      case 'opt': return '<p class="ct-l o">' + t + '</p>';
+      case 'date': return '<p class="ct-d">' + t + '</p>';
+      case 'sigline': return '<p class="ct-s l">________________________________________</p>';
+      case 'signame': return '<p class="ct-s n">' + t + '</p>';
+      case 'sigrole': return '<p class="ct-s r">' + t + '</p>';
+    }
+    return '';
+  }).join('') + '</div>';
+}
+function xe(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function xr(t, rpr) { return '<w:r>' + (rpr ? '<w:rPr>' + rpr + '</w:rPr>' : '') + '<w:t xml:space="preserve">' + xe(t) + '</w:t></w:r>'; }
+function docXml(B) {
+  var NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+  var body = B.map(function (b) {
+    switch (b.k) {
+      case 'title': return '<w:p><w:pPr><w:pStyle w:val="ContractTitle"/><w:jc w:val="center"/></w:pPr>' + xr(b.t) + '</w:p>';
+      case 'info': return '<w:p><w:pPr><w:pStyle w:val="Info"/><w:keepLines/></w:pPr>' + xr(b.b, '<w:b/>') + xr(b.t) + '</w:p>';
+      case 'info2': return '<w:p><w:pPr><w:pStyle w:val="Info"/></w:pPr>' + xr(b.b, '<w:b/>') + xr(b.t) + '</w:p>';
+      case 'head': return '<w:p><w:pPr><w:pStyle w:val="ClauseHeading"/><w:pBdr><w:bottom w:val="single" w:sz="4" w:color="DCE2E4" w:space="5"/></w:pBdr></w:pPr>' + xr(b.t) + '</w:p>';
+      case 'p': return '<w:p><w:pPr><w:jc w:val="both"/></w:pPr>' + xr(b.t) + '</w:p>';
+      case 'bul': return '<w:p><w:pPr><w:spacing w:after="40"/><w:ind w:left="312" w:hanging="153"/></w:pPr>' + xr(b.t) + '</w:p>';
+      case 'opt': return '<w:p><w:pPr><w:spacing w:after="40"/><w:ind w:left="312"/></w:pPr>' + xr(b.t) + '</w:p>';
+      case 'date': return '<w:p><w:pPr><w:keepNext/><w:spacing w:before="240"/><w:jc w:val="right"/></w:pPr>' + xr(b.t) + '</w:p>';
+      case 'sigline': return '<w:p><w:pPr><w:pStyle w:val="Signature"/><w:keepNext/><w:spacing w:before="500"/><w:jc w:val="center"/></w:pPr>' + xr('________________________________________', '<w:color w:val="737B81"/><w:sz w:val="20"/>') + '</w:p>';
+      case 'signame': return '<w:p><w:pPr><w:pStyle w:val="Signature"/><w:keepNext/><w:jc w:val="center"/></w:pPr>' + xr(b.t, '<w:b/>') + '</w:p>';
+      case 'sigrole': return '<w:p><w:pPr><w:pStyle w:val="Signature"/><w:jc w:val="center"/></w:pPr>' + xr(b.t, '<w:color w:val="737B81"/><w:sz w:val="18"/>') + '</w:p>';
+    }
+    return '';
+  }).join('');
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ' + NS + '><w:body>' + body + '<w:sectPr><w:headerReference w:type="default" r:id="rId9"/><w:footerReference w:type="default" r:id="rId10"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1276" w:right="1446" w:bottom="1219" w:left="1446" w:header="567" w:footer="624" w:gutter="0"/></w:sectPr></w:body></w:document>';
+}
+var DOCX_STATIC = {
+  '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>',
+  '_rels/.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+  'word/_rels/document.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/><Relationship Id="rId10" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>',
+  'word/styles.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Cambria" w:hAnsi="Cambria" w:eastAsia="Cambria" w:cs="Cambria"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:lang w:val="pt-BR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="200" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>' +
+    '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:line="278" w:lineRule="auto" w:after="100"/></w:pPr><w:rPr><w:rFonts w:ascii="Cambria" w:hAnsi="Cambria"/><w:color w:val="30363C"/><w:sz w:val="21"/></w:rPr></w:style>' +
+    '<w:style w:type="paragraph" w:customStyle="1" w:styleId="ContractTitle"><w:name w:val="Contract Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="280" w:line="264" w:lineRule="auto"/></w:pPr><w:rPr><w:rFonts w:ascii="Aptos Display" w:hAnsi="Aptos Display"/><w:b/><w:color w:val="1E3142"/><w:sz w:val="29"/></w:rPr></w:style>' +
+    '<w:style w:type="paragraph" w:customStyle="1" w:styleId="Info"><w:name w:val="Info"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="60"/></w:pPr></w:style>' +
+    '<w:style w:type="paragraph" w:customStyle="1" w:styleId="ClauseHeading"><w:name w:val="Clause Heading"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="260" w:after="120"/></w:pPr><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:b/><w:color w:val="1E3142"/><w:sz w:val="20"/></w:rPr></w:style>' +
+    '<w:style w:type="paragraph" w:customStyle="1" w:styleId="Signature"><w:name w:val="Signature"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="0"/></w:pPr><w:rPr><w:sz w:val="20"/></w:rPr></w:style>' +
+    '<w:style w:type="paragraph" w:styleId="Header"><w:name w:val="header"/><w:basedOn w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Footer"><w:name w:val="footer"/><w:basedOn w:val="Normal"/></w:style></w:styles>',
+  'word/header1.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:pStyle w:val="Header"/><w:pBdr><w:bottom w:val="single" w:sz="6" w:color="9BAEB2" w:space="8"/></w:pBdr><w:spacing w:after="0"/><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:b/><w:color w:val="66787D"/><w:sz w:val="16"/></w:rPr><w:t>NATIÉLE BARBOSA  /  LOCAÇÃO DE POLTRONAS</w:t></w:r></w:p></w:hdr>',
+  'word/footer1.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:pStyle w:val="Footer"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:color w:val="737B81"/><w:sz w:val="16"/></w:rPr><w:t xml:space="preserve">CONTRATO DE LOCAÇÃO  •  PÁGINA </w:t></w:r><w:fldSimple w:instr="PAGE"><w:r><w:rPr><w:sz w:val="16"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple></w:p></w:ftr>'
+};
+var CRC_T = null;
+function crc32(u8) {
+  if (!CRC_T) { CRC_T = []; for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; CRC_T[n] = c >>> 0; } }
+  var crc = 0xFFFFFFFF; for (var i = 0; i < u8.length; i++) crc = CRC_T[(crc ^ u8[i]) & 255] ^ (crc >>> 8); return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function zipStore(files) {
+  var enc = new TextEncoder(), parts = [], cen = [], off = 0;
+  function u16(v) { return [v & 255, (v >>> 8) & 255]; } function u32(v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; }
+  Object.keys(files).forEach(function (name) {
+    var nb = enc.encode(name), data = enc.encode(files[name]), crc = crc32(data);
+    var lh = [0x50, 0x4B, 3, 4].concat(u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(nb.length), u16(0));
+    parts.push(new Uint8Array(lh), nb, data);
+    cen.push(new Uint8Array([0x50, 0x4B, 1, 2].concat(u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(nb.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off))), nb);
+    off += lh.length + nb.length + data.length;
+  });
+  var csz = cen.reduce(function (a, p) { return a + p.length; }, 0), n = Object.keys(files).length;
+  var end = new Uint8Array([0x50, 0x4B, 5, 6].concat(u16(0), u16(0), u16(n), u16(n), u32(csz), u32(off), u16(0)));
+  var all = parts.concat(cen, [end]), tot = all.reduce(function (a, p) { return a + p.length; }, 0), out = new Uint8Array(tot), pos = 0;
+  all.forEach(function (p) { out.set(p, pos); pos += p.length; }); return out;
+}
+function buildDocx(r) {
+  var files = {}; Object.keys(DOCX_STATIC).forEach(function (k) { files[k] = DOCX_STATIC[k]; });
+  files['word/document.xml'] = docXml(contractBlocks(r));
+  return zipStore(files);
+}
+function contractName(r) { return 'Contrato ' + r.client.replace(/[\\/:*?"<>|]+/g, '').trim().replace(/\s+/g, ' ') + ' ' + r.code + '.docx'; }
+function contractModal(r) {
+  var B = contractBlocks(r), warn = B.miss.length ? '<div class="alert amber no-print"><b>Faltam dados no contrato</b><div>' + esc(B.miss.join(', ')) + '. Complete em Editar (ou em Ajustes, para o locador) ou assine à mão nos espaços em branco.</div></div>' : '';
+  return dlg('Contrato · ' + r.client, warn + '<div class="row no-print"><button type="button" class="btn" data-act="contractPrint">Imprimir ou salvar em PDF</button><button type="button" class="btn2" data-act="contractDocx" data-id="' + r.id + '">Baixar em Word</button><button type="button" class="btn2" data-act="contractShare" data-id="' + r.id + '">Compartilhar</button></div>' + contractHtml(B), 'Contrato de locação');
 }
 function chairForm(c, code) {
   var st = c ? (c.state || 'ativa') : 'ativa';
@@ -944,11 +1167,14 @@ function rentalForm(f) {
   var clients = {}; S.rentals.forEach(function (r) { clients[r.client] = 1; });
   return dlg(edit ? 'Editar locação' : 'Nova locação',
     '<form id="rentalForm" class="stack" autocomplete="off"><div class="field"><label class="l" for="r-client">Nome do cliente</label><input class="inp" id="r-client" list="clist" required value="' + esc(f.client) + '" placeholder="Ex.: Maria da Silva"><datalist id="clist">' + Object.keys(clients).map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist></div>' +
-    '<div class="fgrid"><div class="field"><label class="l" for="r-phone">WhatsApp</label><input class="inp" id="r-phone" inputmode="tel" value="' + esc(f.phone) + '" placeholder="(00) 00000-0000" maxlength="16"></div><div class="field"><label class="l" for="r-addr">Endereço de entrega</label><input class="inp" id="r-addr" value="' + esc(f.addr) + '" placeholder="Rua, número, bairro"></div></div>' +
+    '<div class="fgrid"><div class="field"><label class="l" for="r-cpf">CPF do cliente</label><input class="inp" id="r-cpf" inputmode="numeric" value="' + esc(f.cpf || '') + '" placeholder="000.000.000-00" maxlength="14"><div id="cpfHint" class="small" style="margin-top:4px;color:var(--red-ink)"></div></div><div class="field"><label class="l" for="r-phone">WhatsApp</label><input class="inp" id="r-phone" inputmode="tel" value="' + esc(f.phone) + '" placeholder="(00) 00000-0000" maxlength="16"></div></div>' +
+    '<div class="fgrid"><div class="field"><label class="l" for="r-city">Cidade do cliente</label><input class="inp" id="r-city" value="' + esc(f.city || '') + '" placeholder="Ex.: Alcobaça-Bahia"></div><div class="field"><label class="l" for="r-addr">Endereço de entrega</label><input class="inp" id="r-addr" value="' + esc(f.addr) + '" placeholder="Rua, número, bairro"></div></div>' +
     '<div class="fgrid f2"><div class="field"><label class="l" for="r-start">Data da entrega</label><input class="inp" id="r-start" type="date" required value="' + esc(f.start) + '"></div><div class="field"><label class="l" for="r-days">Quantidade de dias</label><input class="inp" id="r-days" type="number" min="1" required value="' + esc(f.days) + '"></div></div>' +
     '<div class="row" id="durs"></div>' +
     '<div class="fgrid f2"><div class="field"><label class="l" for="r-tin">Hora da entrega <span class="muted small" style="font-weight:400">(opcional)</span></label><input class="inp" id="r-tin" type="time" value="' + esc(f.tIn || '') + '"></div><div class="field"><label class="l" for="r-tout">Hora da retirada <span class="muted small" style="font-weight:400">(opcional)</span></label><input class="inp" id="r-tout" type="time" value="' + esc(f.tOut || '') + '"></div></div>' +
-    '<div class="fgrid"><div class="field"><label class="l" for="r-rate">Valor da diária (R$)</label><input class="inp" id="r-rate" type="number" min="0" step="0.01" value="' + esc(f.rate) + '"></div><div class="field"><label class="l" for="r-note">Observação</label><input class="inp" id="r-note" value="' + esc(f.note) + '" placeholder="Opcional"></div></div>' +
+    '<div class="fgrid f2"><div class="field"><label class="l" for="r-price">Valor da locação (R$)</label><input class="inp" id="r-price" type="number" min="0" step="0.01" inputmode="decimal" value="' + esc(f.price) + '"><div id="priceHint" class="muted small" style="margin-top:4px"></div></div><div class="field"><label class="l" for="r-frete">Frete (R$)</label><input class="inp" id="r-frete" type="number" min="0" step="0.01" inputmode="decimal" value="' + esc(f.frete) + '" placeholder="0,00"></div></div>' +
+    '<div class="fgrid f2"><div class="field"><label class="l" for="r-entry">Entrada já paga (R$)</label><input class="inp" id="r-entry" type="number" min="0" step="0.01" inputmode="decimal" value="' + esc(f.entry) + '" placeholder="0,00"></div><div class="field"><label class="l" for="r-entrydate">Data da entrada</label><input class="inp" id="r-entrydate" type="date" value="' + esc(f.entryDate || '') + '"></div></div>' +
+    '<div class="fgrid"><div class="field"><label class="l" for="r-rate">Diária extra por atraso (R$)</label><input class="inp" id="r-rate" type="number" min="0" step="0.01" value="' + esc(f.rate) + '"></div><div class="field"><label class="l" for="r-note">Observação</label><input class="inp" id="r-note" value="' + esc(f.note) + '" placeholder="Opcional"></div></div>' +
     '<label class="row small" style="gap:10px"><input type="checkbox" id="r-deliv" style="width:22px;height:22px"' + (f.delivered ? ' checked' : '') + '> <span>A poltrona já foi entregue</span></label>' +
     '<label class="row small" style="gap:10px"><input type="checkbox" id="r-paid" style="width:22px;height:22px"' + (f.paid ? ' checked' : '') + '> <span>Pagamento já recebido</span></label>' +
     '<div><div class="l">Poltrona livre nesse período</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr))" id="picker"></div><div id="sugg" class="small" style="margin-top:8px"></div></div>' +
@@ -962,6 +1188,7 @@ function renderModal() {
   var m = ui.modal, el = $('#modal'), h = '';
   if (m) {
     if (m.t === 'detail') { var r = C.R.filter(function (x) { return x.id === m.id; })[0]; if (r) h = detailHtml(r); else ui.modal = null; }
+    else if (m.t === 'contract') { var cr = C.R.filter(function (x) { return x.id === m.id; })[0]; if (cr) h = contractModal(cr); else ui.modal = null; }
     else if (m.t === 'gate') h = gateHtml(m.err);
     else if (m.t === 'rental') h = rentalForm(ui.form);
     else if (m.t === 'chair') h = chairForm(m.id ? S.chairs.filter(function (c) { return c.id === m.id; })[0] : null, m.code);
@@ -978,13 +1205,17 @@ function renderModal() {
 function buildDurations() {
   var el = $('#durs'); if (!el) return;
   var cur = parseInt(($('#r-days') || {}).value, 10);
-  el.innerHTML = [7, 15, 30, 45].map(function (n) { return '<button type="button" class="pill" data-act="dur" data-id="' + n + '" aria-pressed="' + (cur === n) + '">' + n + ' dias</button>'; }).join('');
+  el.innerHTML = (planList().map(function (p) { return p[0]; }).concat([])).map(function (n) { return '<button type="button" class="pill" data-act="dur" data-id="' + n + '" aria-pressed="' + (cur === n) + '">' + n + ' dias</button>'; }).join('');
 }
 function refreshForm() {
   if (!ui.form) return;
   var T = C.T, startV = ($('#r-start') || {}).value, ok = /^\d{4}-\d{2}-\d{2}$/.test(startV || '');
   var s = ok ? i2d(startV) : T, days = Math.max(1, parseInt(($('#r-days') || {}).value, 10) || 1), e = s + days;
   var rate = parseFloat(($('#r-rate') || {}).value) || 0;
+  var pe = $('#r-price'); if (pe && !ui.form.priceTouched) pe.value = calcPrice(days);
+  var price = parseFloat((pe || {}).value) || 0, frete = parseFloat(($('#r-frete') || {}).value) || 0, auto = calcPrice(days), ph = $('#priceHint');
+  if (ph) ph.textContent = !ui.form.priceTouched ? (days < (planList()[0] || [999])[0] ? 'Diária: ' + days + ' x ' + brl(S.config.rate) : 'Plano que cobre ' + pl(days, 'dia', 'dias')) : (price !== auto ? 'Valor ajustado à mão (padrão: ' + brl(auto) + ')' : '');
+  var cpfEl = $('#r-cpf'), ch = $('#cpfHint'); if (ch) { var cd = digits(cpfEl.value); ch.textContent = cd.length === 11 && !cpfValid(cd) ? 'Confira o CPF: os dígitos não batem.' : ''; }
   buildDurations();
   var chosen = ui.form.chair, chosenOk = false;
   $('#picker').innerHTML = C.CH.map(function (c) {
@@ -999,7 +1230,7 @@ function refreshForm() {
     sg = '<b style="color:var(--red-ink)">Nenhuma poltrona livre nesse período.</b>' + (best ? ' A mais cedo é a ' + esc(best.c.code) + ', a partir de ' + wd(best.d) + ' ' + fd(best.d) + '. <button type="button" class="btn2" data-act="useDate" data-id="' + d2i(best.d) + '" data-chair="' + best.c.id + '" style="min-height:40px;margin-top:6px">Usar esta data</button>' : '');
   }
   $('#sugg').innerHTML = sg;
-  $('#sum').innerHTML = '<div class="card" style="background:var(--bg);padding:12px 14px"><div class="dl" style="border-top:0"><span>Último dia de uso</span><span>' + (ok ? wd(e - 1) + ' ' + fd(e - 1) : '–') + '</span></div><div class="dl"><span>Retirada prevista</span><span>' + (ok ? wd(e) + ' ' + fd(e) : '–') + '</span></div><div class="dl"><span>Higienização</span><span>' + (ok && C.hig ? pl(C.hig, 'dia', 'dias') + ' depois' : 'não usa') + '</span></div><div class="dl"><span>Total</span><span>' + brl(days * rate) + '</span></div></div>';
+  $('#sum').innerHTML = '<div class="card" style="background:var(--bg);padding:12px 14px"><div class="dl" style="border-top:0"><span>Último dia de uso</span><span>' + (ok ? wd(e - 1) + ' ' + fd(e - 1) : '–') + '</span></div><div class="dl"><span>Retirada prevista</span><span>' + (ok ? wd(e) + ' ' + fd(e) : '–') + '</span></div><div class="dl"><span>Higienização</span><span>' + (ok && C.hig ? pl(C.hig, 'dia', 'dias') + ' depois' : 'não usa') + '</span></div><div class="dl"><span>Total com frete</span><span>' + brl(price + frete) + '</span></div></div>';
   var name = (($('#r-client') || {}).value || '').trim(), hint = '';
   if (!ok) hint = 'Informe a data da entrega.'; else if (!name) hint = 'Informe o nome do cliente.'; else if (!chosen) hint = 'Escolha uma poltrona livre.'; else if (!chosenOk) hint = 'A poltrona escolhida está ocupada nesse período.';
   $('#hint').textContent = hint; $('#saveBtn').disabled = !!hint;
@@ -1042,8 +1273,8 @@ function syncDelivered() {
 function rentalById(id) { return S.rentals.filter(function (r) { return r.id === id; })[0]; }
 function openForm(rid, chairId) {
   var T = C.T, r = rid ? rentalById(rid) : null;
-  ui.form = r ? { id: r.id, client: r.client, phone: r.phone, addr: r.addr, start: r.start, tIn: r.tIn || '', tOut: r.tOut || '', days: i2d(r.end) - i2d(r.start), rate: r.rate, note: r.note || '', delivered: r.delivered, paid: !!r.paid, chair: r.chair, delTouched: true }
-    : { id: '', client: '', phone: '', addr: '', start: d2i(T), tIn: '', tOut: '', days: +S.config.days || 15, rate: S.config.rate, note: '', delivered: false, paid: false, chair: chairId || '', delTouched: false };
+  ui.form = r ? { id: r.id, client: r.client, phone: r.phone, addr: r.addr, start: r.start, tIn: r.tIn || '', tOut: r.tOut || '', days: i2d(r.end) - i2d(r.start), rate: r.rate, price: r.price != null && r.price !== '' ? r.price : (i2d(r.end) - i2d(r.start)) * r.rate, priceTouched: true, frete: r.frete || '', entry: r.entry || '', entryDate: r.entryDate || '', cpf: r.cpf || '', city: r.city || '', note: r.note || '', delivered: r.delivered, paid: !!r.paid, chair: r.chair, delTouched: true }
+    : { id: '', client: '', phone: '', addr: '', start: d2i(T), tIn: '', tOut: '', days: +S.config.days || 15, rate: S.config.rate, price: calcPrice(+S.config.days || 15), priceTouched: false, frete: '', entry: '', entryDate: '', cpf: '', city: '', note: '', delivered: false, paid: false, chair: chairId || '', delTouched: false };
   ui.modal = { t: 'rental' }; render();
 }
 var H = {
@@ -1063,8 +1294,25 @@ var H = {
   day: function (id) { if (!window.matchMedia('(max-width:699px)').matches) return; ui.view = 'lista'; render(); var el = document.getElementById('d-' + id); if (el) el.scrollIntoView({ block: 'start' }); },
   prevM: function () { ui.mOff--; render(); }, nextM: function () { ui.mOff++; render(); }, thisM: function () { ui.mOff = 0; render(); },
   filter: function (id) { ui.filter = id; render(); },
+  chairF: function (id) { ui.cf = id || ''; if (id && (ui.filter === 'ativas' || ui.filter === 'reservas')) ui.filter = 'futuras'; render(); },
+  chairPF: function (id) { ui.pf = id; render(); },
+  chairNext: function (id) { ui.filter = 'futuras'; ui.cf = id; ui.q = ''; go('locacoes'); },
   owed: function () { ui.filter = 'areceber'; ui.q = ''; go('locacoes'); },
-  dur: function (id) { $('#r-days').value = id; refreshForm(); },
+  contract: function (id) { ui.opener = document.activeElement; ui.modal = { t: 'contract', id: id }; render(); },
+  contractPrint: function () { window.print(); },
+  contractDocx: function (id) {
+    var r = C.R.filter(function (x) { return x.id === id; })[0]; if (!r) return;
+    var blob = new Blob([buildDocx(r)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = contractName(r); document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    say('Contrato baixado. Ele fica na pasta de downloads do aparelho.');
+  },
+  contractShare: function (id) {
+    var r = C.R.filter(function (x) { return x.id === id; })[0]; if (!r) return;
+    var file = new File([buildDocx(r)], contractName(r), { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], title: 'Contrato de locação' }).catch(function () { });
+    else { H.contractDocx(id); say('Este aparelho não compartilha arquivos direto. O contrato foi baixado; anexe no WhatsApp.'); }
+  },
+  dur: function (id) { $('#r-days').value = id; ui.form.priceTouched = false; refreshForm(); },
   pickChair: function (id) { ui.form.chair = id; refreshForm(); },
   deliver: function (id, el, ev, force) {
     var r = rentalById(id); if (!r) return; var T = C.T, early = i2d(r.start) > T, len = i2d(r.end) - i2d(r.start);
@@ -1098,6 +1346,8 @@ var H = {
     var ne = i2d(r.end) + n, s = i2d(r.start);
     var cf = conflict(r.chair, s, ne, r.id);
     if (cf) { say('Não dá para prorrogar: a ' + chairById(r.chair).code + ' já está reservada para ' + cf.client + ' a partir de ' + fd(cf.s) + '.', null, true); return; }
+    var od = i2d(r.end) - s, hadAuto = r.price != null && r.price !== '' && Math.abs(+r.price - calcPrice(od)) < 0.01;
+    if (r.price != null && r.price !== '') r.price = hadAuto ? calcPrice(od + n) : Math.round((+r.price + n * (+r.rate || 0)) * 100) / 100;
     r.end = d2i(ne); save(); render(); say('Locação prorrogada. Nova retirada em ' + fd(ne) + '.');
   },
   askDelete: function (id) { var r = rentalById(id); ui.modal = { t: 'confirm', title: 'Excluir esta locação?', text: 'A locação de ' + r.client + ' será removida da agenda. Não dá para desfazer.', act: 'doDelete', id: id, label: 'Excluir locação' }; render(); },
@@ -1151,7 +1401,7 @@ function backupError(o) {
     if (!r || !r.id || typeof r.client !== 'string' || !r.client.trim()) return 'O backup tem uma locação sem cliente (item ' + (i + 1) + ').';
     if (!ids[r.chair]) return 'A locação de ' + r.client + ' aponta para uma poltrona que não existe no backup.';
     if (!ISO.test(r.start || '') || !ISO.test(r.end || '') || r.end < r.start) return 'A locação de ' + r.client + ' tem datas inválidas.';
-    if (isNaN(+r.rate)) return 'A locação de ' + r.client + ' tem valor inválido.';
+    if (isNaN(+r.rate) || (r.price != null && r.price !== '' && isNaN(+r.price)) || (r.frete && isNaN(+r.frete)) || (r.entry && isNaN(+r.entry))) return 'A locação de ' + r.client + ' tem valor inválido.';
   }
   return '';
 }
@@ -1181,6 +1431,7 @@ document.addEventListener('click', function (e) {
 document.addEventListener('input', function (e) {
   var t = e.target;
   if (t.id === 'q') { ui.q = t.value; $('#locList').innerHTML = locListHtml(); }
+  else if (t.id === 'pq') { ui.pq = t.value; var pos = t.selectionStart; render(); var pe = $('#pq'); if (pe) { pe.focus(); try { pe.setSelectionRange(pos, pos); } catch (x) {} } }
   else if (t.id === 'cq') { ui.cq = t.value; $('#cliList').innerHTML = clientListHtml(); }
   else if (t.id === 'ch-qty' || t.id === 'ch-code') {
     var qn = Math.max(1, Math.min(20, parseInt(($('#ch-qty') || {}).value, 10) || 1)), cv = ($('#ch-code') || {}).value || '', mm = /^(.*?)(\d+)$/.exec(cv), hh = $('#ch-qhint');
@@ -1188,10 +1439,13 @@ document.addEventListener('input', function (e) {
   }
   else if (t.closest && t.closest('#rentalForm')) {
     if (t.id === 'r-phone') t.value = fmtPhone(t.value);
+    if (t.id === 'r-cpf') t.value = fmtCpf(t.value);
+    if (t.id === 'r-price') ui.form.priceTouched = true;
+    if (t.id === 'r-days' && !t.value) ui.form.priceTouched = false;
     if (t.id === 'r-start') syncDelivered();
     if (t.id === 'r-client') {
       var m = C.R.filter(function (r) { return r.client === t.value; }).pop();
-      if (m) { if (!$('#r-phone').value) $('#r-phone').value = fmtPhone(m.phone || ''); if (!$('#r-addr').value) $('#r-addr').value = m.addr || ''; }
+      if (m) { if (!$('#r-phone').value) $('#r-phone').value = fmtPhone(m.phone || ''); if (!$('#r-addr').value) $('#r-addr').value = m.addr || ''; if (!$('#r-cpf').value) $('#r-cpf').value = fmtCpf(m.cpf || ''); if (!$('#r-city').value) $('#r-city').value = m.city || ''; }
     }
     refreshForm();
   }
@@ -1208,7 +1462,7 @@ document.addEventListener('submit', function (e) {
     var startV = $('#r-start').value, days = Math.max(1, parseInt($('#r-days').value, 10) || 1), s = i2d(startV), en = s + days;
     var cf = conflict(ui.form.chair, s, en, ui.form.id) || chairBlocked(ui.form.chair, ui.form.id);
     if (!$('#r-client').value.trim() || !ui.form.chair || cf) { refreshForm(); return; }
-    var data = { chair: ui.form.chair, client: $('#r-client').value.trim(), phone: $('#r-phone').value.trim(), addr: $('#r-addr').value.trim(), start: startV, end: d2i(en), tIn: $('#r-tin').value, tOut: $('#r-tout').value, rate: parseFloat($('#r-rate').value) || 0, delivered: $('#r-deliv').checked, paid: $('#r-paid').checked, note: $('#r-note').value.trim() };
+    var data = { chair: ui.form.chair, client: $('#r-client').value.trim(), phone: $('#r-phone').value.trim(), addr: $('#r-addr').value.trim(), start: startV, end: d2i(en), tIn: $('#r-tin').value, tOut: $('#r-tout').value, rate: parseFloat($('#r-rate').value) || 0, price: Math.max(0, parseFloat($('#r-price').value) || 0), frete: Math.max(0, parseFloat($('#r-frete').value) || 0), entry: Math.max(0, parseFloat($('#r-entry').value) || 0), entryDate: $('#r-entrydate').value || '', cpf: fmtCpf($('#r-cpf').value), city: $('#r-city').value.trim(), delivered: $('#r-deliv').checked, paid: $('#r-paid').checked, note: $('#r-note').value.trim() };
     var rec;
     if (ui.form.id) { rec = rentalById(ui.form.id); Object.assign(rec, data); }
     else { rec = Object.assign({ id: uid(), returnedOn: null, avisos: {} }, data); S.rentals.push(rec); }
@@ -1240,7 +1494,7 @@ document.addEventListener('submit', function (e) {
       say(codes.length === 1 ? 'Poltrona ' + codes[0] + ' adicionada.' : codes.length + ' poltronas adicionadas: ' + codes[0] + ' a ' + codes[codes.length - 1] + '.');
     }
   } else if (f.id === 'cfgForm') {
-    S.config = Object.assign({}, S.config, { empresa: $('#c-emp').value.trim() || DEFAULT_CFG.empresa, rate: parseFloat($('#c-rate').value) || 0, days: Math.max(1, parseInt($('#c-days').value, 10) || 1), hig: parseInt($('#c-hig').value, 10) || 0, aviso: parseInt($('#c-av').value, 10) || 2, cidade: $('#c-cid').value.trim(), msgLembrete: $('#c-m1').value, msgAtraso: $('#c-m2').value, msgEntrega: $('#c-m3').value });
+    S.config = Object.assign({}, S.config, { empresa: $('#c-emp').value.trim() || DEFAULT_CFG.empresa, rate: parseFloat($('#c-rate').value) || 0, days: Math.max(1, parseInt($('#c-days').value, 10) || 1), hig: parseInt($('#c-hig').value, 10) || 0, planos: [0, 1, 2].map(function (i) { return [parseInt($('#c-pd' + i).value, 10), parseFloat($('#c-pv' + i).value)]; }).filter(function (x) { return x[0] > 0 && x[1] >= 0; }), locNome: $('#c-ln').value.trim(), locCpf: fmtCpf($('#c-lc').value), locTel: fmtPhone($('#c-lt').value), aviso: parseInt($('#c-av').value, 10) || 2, cidade: $('#c-cid').value.trim(), msgLembrete: $('#c-m1').value, msgAtraso: $('#c-m2').value, msgEntrega: $('#c-m3').value });
     save(); render(); say('Ajustes salvos.');
   }
 });
