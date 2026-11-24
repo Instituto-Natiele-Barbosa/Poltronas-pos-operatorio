@@ -87,6 +87,21 @@ h3{font-size:17px}
 .seg button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.14)}
 .pill{min-height:44px;padding:0 16px;border-radius:999px;font-weight:600;font-size:14px;background:#fff;color:var(--ink);border:1px solid #CFC2AE}
 .pill[aria-pressed="true"]{background:var(--cocoa);color:#fff;border-color:var(--cocoa)}
+.pill.sm{min-height:38px;padding:0 14px;display:inline-flex;align-items:center;gap:7px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none;box-shadow:0 0 0 2px #fff}
+.pill[aria-pressed="true"] .dot{box-shadow:0 0 0 2px var(--cocoa)}
+.btn.sm,.btn2.sm{min-height:38px;padding:0 14px;font-size:13.5px}
+@media (pointer:fine){.pill{min-height:38px}}
+.fl{display:flex;flex-direction:column;gap:8px}
+.fi{text-align:left;display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);border-radius:12px;background:#fff;padding:0 14px 0 0;overflow:hidden;color:inherit;font-size:14px;min-height:64px}
+button.fi:hover{background:#FBF7F0}
+.fi.gap{background:var(--sage-3);border-color:var(--sage-2);min-height:60px}
+.fbar{align-self:stretch;min-height:56px;width:6px;flex:none}
+.ftxt{display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-width:0;padding:10px 0}
+@media (max-width:520px){.fi.gap{flex-wrap:wrap;padding:0 12px 12px 0;row-gap:0}.fi.gap .ftxt{flex:1 1 calc(100% - 30px)}.fi.gap .btn.sm{flex:1 1 100%;margin-left:18px}}
+.winline{display:flex;align-items:center;gap:8px;background:var(--sage-3);color:var(--sage-ink);border-radius:10px;padding:8px 10px;font-size:13.5px;font-weight:600}
+.hist summary{cursor:pointer;font-weight:700;color:#5E4120;min-height:28px}
+.chaircard{transition:box-shadow .15s}.chaircard:hover{box-shadow:0 4px 14px rgba(79,59,36,.10)}
 .inp,select.inp,textarea.inp{min-height:44px;border:1px solid #CFC2AE;border-radius:10px;padding:8px 12px;font:inherit;background:#fff;color:var(--ink);width:100%}
 textarea.inp{min-height:92px;resize:vertical}
 label.l{font-size:13px;font-weight:600;display:block;margin-bottom:6px}
@@ -363,7 +378,7 @@ function demo() {
   };
 }
 var S = load();
-var ui = { screen: 'hoje', view: (window.matchMedia && window.matchMedia('(max-width:959px)').matches) ? 'lista' : 'linha', mOff: 0, filter: 'ativas', cf: '', pf: 'todas', pq: '', q: '', cq: '', modal: null, form: null, toast: null };
+var ui = { screen: 'hoje', view: (window.matchMedia && window.matchMedia('(max-width:959px)').matches) ? 'lista' : 'linha', mOff: 0, filter: 'ativas', cf: '', pf: 'todas', pq: '', fid: '', q: '', cq: '', modal: null, form: null, toast: null };
 var toastTimer = null;
 
 /* ---------- cálculo ---------- */
@@ -835,7 +850,6 @@ function viewAgenda() {
 function locFilters() {
   return [['ativas', 'Em andamento', function (r) { return r.st === 'ativa' || r.st === 'proxima' || r.st === 'atrasada' || r.st === 'entrega'; }],
     ['atrasadas', 'Atrasadas', function (r) { return r.st === 'atrasada'; }],
-    ['futuras', 'Agenda', function (r) { return r.st !== 'encerrada'; }],
     ['reservas', 'Próximas', function (r) { return r.st === 'reserva'; }],
     ['encerradas', 'Encerradas', function (r) { return r.st === 'encerrada'; }],
     ['areceber', 'A receber', function (r) { return !r.paid && r.st !== 'reserva'; }],
@@ -855,19 +869,7 @@ function chairSlots(cid) {
   return out;
 }
 function slotText(sl) { return sl.open ? 'Livre a partir de ' + fd(sl.a) + ' · sem reservas à frente' : 'Livre de ' + fd(sl.a) + ' a ' + fd(sl.b) + ' · cabem até ' + pl(sl.n, 'diária', 'diárias'); }
-function chairSheetHtml(cid) {
-  var rows = C.R.filter(function (r) { return r.chair === cid && r.st !== 'encerrada'; }).sort(function (a, b) { return a.s - b.s; });
-  var slots = chairSlots(cid), html = '', used = {};
-  rows.forEach(function (r) {
-    slots.forEach(function (sl, i) { if (!used[i] && !sl.open && sl.before === r) { used[i] = 1; html += '<div class="item" style="border:2px dashed var(--blue);background:#EEF4EE;border-radius:10px;padding:10px 12px"><b style="color:var(--blue)">' + slotText(sl) + '</b></div>'; } });
-    html += '<button type="button" class="item btnrow" data-act="open" data-id="' + r.id + '"><span style="min-width:0;flex:1 1 160px"><b>' + esc(r.client) + '</b><span class="muted small" style="display:block">' + fd(r.s) + ' → ' + fd(r.e) + at(r.tOut) + ' · ' + pl(r.days, 'diária', 'diárias') + (r.late ? ' + ' + pl(r.late, 'extra', 'extras') : '') + '</span></span><span class="row" style="flex-wrap:nowrap">' + chip(r.st) + ic(IC.right, 18) + '</span></button>';
-  });
-  var last = slots[slots.length - 1];
-  html += '<div class="item" style="border:2px dashed var(--blue);background:#EEF4EE;border-radius:10px;padding:10px 12px"><b style="color:var(--blue)">' + slotText(last) + '</b></div>';
-  return html;
-}
 function locListHtml() {
-  if (ui.cf && ui.filter === 'futuras' && chairById(ui.cf)) return chairSheetHtml(ui.cf);
   var fl = locFilters(), act = fl.filter(function (f) { return f[0] === ui.filter; })[0][2], q = ui.q.trim().toLowerCase();
   var order = { atrasada: 0, entrega: 1, proxima: 2, ativa: 3, reserva: 4, encerrada: 5 };
   var rows = C.R.filter(act).filter(function (r) { return !ui.cf || r.chair === ui.cf; }).filter(function (r) { return !q || r.client.toLowerCase().indexOf(q) >= 0 || r.code.toLowerCase().indexOf(q) >= 0; })
@@ -886,19 +888,20 @@ function owedLine() {
 function viewLocacoes() {
   if (!S.chairs.length) return emptyChairs();
   var fl = locFilters();
-  return '<div class="card stack"><input class="inp" id="q" type="search" aria-label="Buscar por cliente ou poltrona" value="' + esc(ui.q) + '" placeholder="Buscar cliente ou poltrona"><div class="row fscroll" role="group" aria-label="Filtrar locações">' + fl.map(function (f) {
-    return '<button type="button" class="pill" data-act="filter" data-id="' + f[0] + '" aria-pressed="' + (ui.filter === f[0]) + '">' + f[1] + ' (' + C.R.filter(f[2]).length + ')</button>';
-  }).join('') + '</div><div class="row fscroll" role="group" aria-label="Filtrar por poltrona"><button type="button" class="pill" data-act="chairF" data-id="" aria-pressed="' + (!ui.cf) + '">Todas as poltronas</button>' + C.CH.map(function (c) {
-    var n = C.R.filter(function (r) { return r.chair === c.id && fl.filter(function (f) { return f[0] === ui.filter; })[0][2](r); }).length;
-    return '<button type="button" class="pill" data-act="chairF" data-id="' + c.id + '" aria-pressed="' + (ui.cf === c.id) + '">' + esc(c.code) + ' (' + n + ')</button>';
-  }).join('') + '</div>' + owedLine() + '<div id="locList">' + locListHtml() + '</div></div>';
+  if (ui.cf && !chairById(ui.cf)) ui.cf = '';
+  return '<div class="card stack"><div class="row" style="flex-wrap:wrap;gap:10px"><input class="inp" id="q" type="search" aria-label="Buscar por cliente ou poltrona" value="' + esc(ui.q) + '" placeholder="Buscar cliente ou poltrona" style="flex:1 1 240px;width:auto"><select class="inp" id="cf" aria-label="Filtrar por poltrona" style="flex:0 1 230px;width:auto"><option value="">Todas as poltronas</option>' + C.CH.map(function (c) { return '<option value="' + c.id + '"' + (ui.cf === c.id ? ' selected' : '') + '>' + esc(c.code) + '</option>'; }).join('') + '</select></div>' +
+    '<div class="row fscroll" role="group" aria-label="Filtrar locações">' + fl.map(function (f) {
+      var n = C.R.filter(function (r) { return (!ui.cf || r.chair === ui.cf) && f[2](r); }).length;
+      return '<button type="button" class="pill" data-act="filter" data-id="' + f[0] + '" aria-pressed="' + (ui.filter === f[0]) + '">' + f[1] + ' (' + n + ')</button>';
+    }).join('') + '</div>' + owedLine() + '<div id="locList">' + locListHtml() + '</div></div>';
 }
 
 /* poltronas */
+var DOT = { livre: 'var(--teal)', ativa: 'var(--blue)', proxima: 'var(--amber)', atrasada: 'var(--red)', higiene: 'var(--sage)', manut: '#B9AFA3' };
 function viewPoltronas() {
+  if (!S.chairs.length) return emptyChairs();
+  if (ui.fid) { if (C.CH.some(function (c) { return c.id === ui.fid; })) return fichaHtml(ui.fid); ui.fid = ''; }
   var M = monthInfo(), n = M.n;
-  var head = '<div class="row" style="justify-content:space-between;margin-bottom:14px"><span class="muted">' + pl(C.CH.length, 'poltrona em uso', 'poltronas em uso') + '</span><button class="btn" type="button" data-act="newChair">Adicionar poltrona</button></div>';
-  if (!S.chairs.length) return head + emptyChairs();
   var retired = S.chairs.filter(function (c) { return c.state === 'aposentada'; });
   var pfs = [['todas', 'Todas', function () { return true; }],
     ['com', 'Com cliente', function (c) { return !!c.cur; }],
@@ -906,13 +909,10 @@ function viewPoltronas() {
     ['atencao', 'Retirada próxima ou atraso', function (c) { return !!c.cur && (c.cur.st === 'proxima' || c.cur.st === 'atrasada'); }],
     ['reservas', 'Com reserva à frente', function (c) { return C.R.some(function (r) { return r.chair === c.id && r.st === 'reserva'; }); }]];
   var pq = ui.pq.trim().toLowerCase();
-  function pMatch(c) {
-    if (!pq) return true;
-    return c.code.toLowerCase().indexOf(pq) >= 0 || C.R.some(function (r) { return r.chair === c.id && r.st !== 'encerrada' && r.client.toLowerCase().indexOf(pq) >= 0; });
-  }
+  function pMatch(c) { return !pq || c.code.toLowerCase().indexOf(pq) >= 0 || C.R.some(function (r) { return r.chair === c.id && r.st !== 'encerrada' && r.client.toLowerCase().indexOf(pq) >= 0; }); }
   var pfun = pfs.filter(function (f) { return f[0] === ui.pf; })[0][2];
   var shown = C.CH.filter(function (c) { return pfun(c) && pMatch(c); });
-  head += '<div class="card stack" style="margin-bottom:14px"><input class="inp" id="pq" type="search" aria-label="Buscar poltrona ou cliente" value="' + esc(ui.pq) + '" placeholder="Buscar poltrona ou cliente"><div class="row fscroll" role="group" aria-label="Filtrar poltronas">' + pfs.map(function (f) {
+  var head = '<div class="card stack" style="margin-bottom:14px;gap:12px"><div class="row" style="gap:10px"><input class="inp" id="pq" type="search" aria-label="Buscar poltrona ou cliente" value="' + esc(ui.pq) + '" placeholder="Buscar poltrona ou cliente" style="flex:1 1 240px;width:auto"><button class="btn2" type="button" data-act="newChair">+ Adicionar poltrona</button></div><div class="row fscroll" role="group" aria-label="Filtrar poltronas">' + pfs.map(function (f) {
     return '<button type="button" class="pill" data-act="chairPF" data-id="' + f[0] + '" aria-pressed="' + (ui.pf === f[0]) + '">' + f[1] + ' (' + C.CH.filter(f[2]).length + ')</button>';
   }).join('') + '</div></div>';
   return head + (shown.length ? '' : '<div class="card muted">Nenhuma poltrona com esse filtro.</div>') + '<div class="grid g-cards">' + shown.map(function (c) {
@@ -920,15 +920,19 @@ function viewPoltronas() {
     for (var d = M.m0; d <= M.m1; d++) if (mine.some(function (r) { return r.s <= d && d <= r.de + r.late; })) occ++;
     mine.forEach(function (r) {
       var col = r.st === 'proxima' ? 'var(--amber)' : r.st === 'reserva' || r.st === 'entrega' ? '#D9C2A0' : r.st === 'encerrada' ? '#D9CFC4' : 'var(--blue)';
-      [[r.s, r.de, col], [r.e + 1, r.e + r.late, 'var(--red)']].forEach(function (p) {
-        if (p[1] < p[0] || p[1] < M.m0 || p[0] > M.m1) return;
-        strip += '<div style="grid-column:' + (Math.max(p[0], M.m0) - M.m0 + 1) + ' / ' + (Math.min(p[1], M.m1) - M.m0 + 2) + ';grid-row:1;background:' + p[2] + '"></div>';
+      [[r.s, r.de, col], [r.e + 1, r.e + r.late, 'var(--red)']].forEach(function (q) {
+        if (q[1] < q[0] || q[1] < M.m0 || q[0] > M.m1) return;
+        strip += '<div style="grid-column:' + (Math.max(q[0], M.m0) - M.m0 + 1) + ' / ' + (Math.min(q[1], M.m1) - M.m0 + 2) + ';grid-row:1;background:' + q[2] + '"></div>';
       });
     });
-    return '<div class="card stack" style="gap:12px"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="big">' + esc(c.code) + '</div><div class="muted small">' + esc(c.desc) + '</div></div>' + chip(c.key) + '</div>' +
-      '<div><div style="font-weight:700;font-size:18px">' + esc(c.count) + '</div><div>' + esc(c.sub) + '</div><div class="muted small">' + esc(c.avail) + '</div></div>' + nextHtml(c) +
-      '<div><div style="display:grid;grid-template-columns:repeat(' + n + ',minmax(0,1fr));height:12px;background:#E8EFE8;border-radius:4px;overflow:hidden">' + strip + '</div><div class="muted small row" style="justify-content:space-between;margin-top:4px"><span>Ocupação: ' + Math.round(occ / n * 100) + '%</span><span>' + M.label + '</span></div></div>' +
-      '<div class="row">' + (c.cur ? openBtn(c.cur.id, 'Ver locação atual') : c.key === 'manut' ? '' : '<button type="button" class="btn2" data-act="newRentalChair" data-id="' + c.id + '">Nova locação</button>') + '<button type="button" class="btn2" data-act="editChair" data-id="' + c.id + '">Editar</button></div></div>';
+    var nx = mine.filter(function (r) { return r.st === 'reserva'; }).sort(function (a, b) { return a.s - b.s; });
+    var sl = chairSlots(c.id)[0];
+    var win = c.key === 'manut' ? '' : '<div class="winline">' + ic(IC.agenda, 16) + '<span>' + (sl.open ? 'Livre a partir de ' + fd(sl.a) : 'Cabem ' + pl(sl.n, 'diária', 'diárias') + ' entre ' + fd(sl.a) + ' e ' + fd(sl.b)) + '</span></div>';
+    return '<div class="card stack chaircard" style="gap:12px"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><div class="big">' + esc(c.code) + '</div><div class="muted small">' + esc(c.desc) + '</div></div>' + chip(c.key) + '</div>' +
+      '<div><div style="font-weight:700;font-size:18px">' + esc(c.count) + '</div><div>' + esc(c.sub) + '</div></div>' + win +
+      (nx.length ? '<div class="muted small">Próxima: <b style="color:var(--ink)">' + esc(nx[0].client) + '</b> · ' + fd(nx[0].s) + (nx.length > 1 ? ' (+' + (nx.length - 1) + ')' : '') + '</div>' : '') +
+      '<div><div style="display:grid;grid-template-columns:repeat(' + n + ',minmax(0,1fr));height:10px;background:#E8EFE8;border-radius:4px;overflow:hidden">' + strip + '</div><div class="muted small row" style="justify-content:space-between;margin-top:4px;flex-wrap:nowrap"><span>Ocupação: ' + Math.round(occ / n * 100) + '%</span><span>' + M.label + '</span></div></div>' +
+      '<div class="row" style="margin-top:auto"><button type="button" class="btn" data-act="fichaOpen" data-id="' + c.id + '" style="flex:1 1 auto">Abrir agenda da ' + esc(c.code) + '</button><button type="button" class="btn2" data-act="editChair" data-id="' + c.id + '">Editar</button></div></div>';
   }).join('') + '</div>' + (retired.length ? '<div class="card stack" style="margin-top:16px"><h2>Aposentadas</h2><p class="muted small" style="margin:0">Vendidas ou fora de uso definitivo. Não aparecem na agenda, mas o histórico das locações fica guardado.</p>' + retired.map(function (c) { return '<div class="item"><div style="flex:1 1 160px"><b>' + esc(c.code) + '</b><div class="muted small">' + esc(c.desc) + '</div></div><button type="button" class="btn2" data-act="reactivate" data-id="' + c.id + '">Reativar</button></div>'; }).join('') + '</div>' : '');
 }
 function nextHtml(c) {
@@ -939,6 +943,39 @@ function nextHtml(c) {
   return '<div class="stack" style="gap:6px">' + sl + '<div class="small" style="font-weight:700">Próximas locações (' + nx.length + ')</div>' + nx.slice(0, 3).map(function (r) {
     return '<button type="button" class="item btnrow" style="padding:8px 10px" data-act="open" data-id="' + r.id + '"><span style="flex:1 1 140px;min-width:0"><b style="font-weight:600">' + esc(r.client) + '</b><span class="muted small" style="display:block">' + fd(r.s) + ' → ' + fd(r.e) + ' · ' + pl(r.days, 'diária', 'diárias') + '</span></span>' + ic(IC.right, 16) + '</button>';
   }).join('') + all + '</div>';
+
+}
+function fichaHtml(cid) {
+  var c = C.CH.filter(function (x) { return x.id === cid; })[0], T = C.T;
+  var rows = C.R.filter(function (r) { return r.chair === cid && r.st !== 'encerrada'; }).sort(function (a, b) { return a.s - b.s; });
+  var done = C.R.filter(function (r) { return r.chair === cid && r.st === 'encerrada'; }).sort(function (a, b) { return b.s - a.s; });
+  var slots = c.key === 'manut' ? [] : chairSlots(cid), used = {};
+  function bar(col) { return '<i class="fbar" style="background:' + col + '"></i>'; }
+  function slotRow(sl) {
+    var t = sl.open ? 'Livre a partir de ' + fd(sl.a) : 'Cabem até ' + pl(sl.n, 'diária', 'diárias');
+    var sub = sl.open ? 'Sem reservas à frente' : 'Entrega a partir de ' + fd(sl.a) + ' · retirada até ' + fd(sl.b);
+    return '<div class="fi gap">' + bar('var(--teal)') + '<span class="ftxt"><b>' + t + '</b><span class="muted small">' + sub + '</span></span><button type="button" class="btn sm" data-act="newRentalWin" data-id="' + cid + '" data-start="' + sl.a + '" data-n="' + (sl.open ? 0 : sl.n) + '">Alugar</button></div>';
+  }
+  function rentRow(r) {
+    var col = r.st === 'atrasada' ? 'var(--red)' : r.st === 'proxima' ? 'var(--amber)' : r.st === 'reserva' || r.st === 'entrega' ? '#D9C2A0' : r.st === 'encerrada' ? '#CFC6BB' : 'var(--blue)';
+    var when = r.st === 'reserva' ? 'Entrega em ' + pl(r.s - T, 'dia', 'dias') : r.st === 'atrasada' ? pl(r.late, 'dia', 'dias') + ' de atraso' : r.st === 'entrega' ? 'Entrega pendente' : r.st === 'encerrada' ? '' : r.left === 0 ? 'Retirada hoje' : r.left === 1 ? 'Retirada amanhã' : 'Faltam ' + r.left + ' dias';
+    return '<button type="button" class="fi" data-act="open" data-id="' + r.id + '">' + bar(col) + '<span class="ftxt"><b>' + esc(r.client) + '</b><span class="muted small">' + fd(r.s) + ' → ' + fd(r.e) + at(r.tOut) + ' · ' + pl(r.days, 'diária', 'diárias') + (r.late ? ' + ' + pl(r.late, 'extra', 'extras') : '') + '</span>' + (when ? '<span class="small" style="font-weight:600;color:var(--blue-ink)">' + when + '</span>' : '') + '</span><span class="row" style="flex-wrap:nowrap;gap:6px">' + chip(r.st) + ic(IC.right, 18) + '</span></button>';
+  }
+  var list = '';
+  rows.forEach(function (r) {
+    slots.forEach(function (sl, i) { if (!used[i] && !sl.open && sl.before === r) { used[i] = 1; list += slotRow(sl); } });
+    list += rentRow(r);
+  });
+  if (slots.length) list += slotRow(slots[slots.length - 1]);
+  if (c.key === 'manut') list = '<div class="muted">Esta poltrona está em manutenção e não recebe novas locações. Para voltar a alugar, edite a poltrona e escolha "Ativa".</div>' + list;
+  var sw = C.CH.map(function (x) { return '<button type="button" class="pill sm" data-act="fichaOpen" data-id="' + x.id + '" aria-pressed="' + (x.id === cid) + '"><i class="dot" style="background:' + (DOT[x.key] || 'var(--blue)') + '"></i>' + esc(x.code) + '</button>'; }).join('');
+  return '<div class="stack" style="gap:14px"><div class="row" style="gap:10px"><button type="button" class="btn2 sm" data-act="fichaBack">← Todas as poltronas</button></div>' +
+    '<div class="row fscroll" role="group" aria-label="Trocar de poltrona">' + sw + '</div>' +
+    '<div class="card stack" style="gap:10px"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="big">' + esc(c.code) + '</div><div class="muted small">' + esc(c.desc) + '</div></div>' + chip(c.key) + '</div>' +
+    '<div><div style="font-weight:700;font-size:18px">' + esc(c.count) + '</div><div>' + esc(c.sub) + '</div><div class="muted small">' + esc(c.avail) + '</div></div>' +
+    '<div class="row">' + (c.key === 'manut' ? '' : '<button type="button" class="btn" data-act="newRentalChair" data-id="' + cid + '">+ Nova locação</button>') + '<button type="button" class="btn2" data-act="editChair" data-id="' + cid + '">Editar poltrona</button></div></div>' +
+    '<div class="card stack" style="gap:12px"><div class="row" style="justify-content:space-between"><h2>Agenda da ' + esc(c.code) + '</h2><span class="muted small">' + pl(rows.length, 'locação', 'locações') + ' em aberto</span></div><div class="fl">' + list + '</div></div>' +
+    (done.length ? '<details class="card hist"><summary>Histórico (' + done.length + ')</summary><div class="fl" style="margin-top:12px">' + done.slice(0, 12).map(rentRow).join('') + (done.length > 12 ? '<div class="muted small">Mostrando as 12 mais recentes. Veja todas em Locações.</div>' : '') + '</div></details>' : '') + '</div>';
 }
 function emptyChairs() {
   return '<div class="card stack"><h2>Nenhuma poltrona cadastrada</h2><p class="muted" style="margin:0">Cadastre as poltronas para começar a registrar locações.</p><div class="row"><button class="btn" type="button" data-act="newChair">Adicionar poltrona</button></div></div>';
@@ -1271,14 +1308,15 @@ function syncDelivered() {
   box.checked = i2d(st) < C.T;
 }
 function rentalById(id) { return S.rentals.filter(function (r) { return r.id === id; })[0]; }
-function openForm(rid, chairId) {
+function openForm(rid, chairId, startDay, maxDays) {
   var T = C.T, r = rid ? rentalById(rid) : null;
   ui.form = r ? { id: r.id, client: r.client, phone: r.phone, addr: r.addr, start: r.start, tIn: r.tIn || '', tOut: r.tOut || '', days: i2d(r.end) - i2d(r.start), rate: r.rate, price: r.price != null && r.price !== '' ? r.price : (i2d(r.end) - i2d(r.start)) * r.rate, priceTouched: true, frete: r.frete || '', entry: r.entry || '', entryDate: r.entryDate || '', cpf: r.cpf || '', city: r.city || '', note: r.note || '', delivered: r.delivered, paid: !!r.paid, chair: r.chair, delTouched: true }
     : { id: '', client: '', phone: '', addr: '', start: d2i(T), tIn: '', tOut: '', days: +S.config.days || 15, rate: S.config.rate, price: calcPrice(+S.config.days || 15), priceTouched: false, frete: '', entry: '', entryDate: '', cpf: '', city: '', note: '', delivered: false, paid: false, chair: chairId || '', delTouched: false };
+  if (!r && startDay) { var dd = +S.config.days || 15; if (maxDays > 0) dd = Math.min(dd, maxDays); ui.form.start = d2i(startDay); ui.form.days = dd; ui.form.price = calcPrice(dd); }
   ui.modal = { t: 'rental' }; render();
 }
 var H = {
-  nav: function (id) { go(id); },
+  nav: function (id) { ui.fid = ''; go(id); },
   chairs: function () { go('poltronas'); },
   newRental: function () { if (!S.chairs.length) { say('Cadastre uma poltrona antes de registrar a locação.', null, true); go('poltronas'); return; } openForm('', ''); },
   newRentalChair: function (id) { openForm('', id); },
@@ -1294,9 +1332,10 @@ var H = {
   day: function (id) { if (!window.matchMedia('(max-width:699px)').matches) return; ui.view = 'lista'; render(); var el = document.getElementById('d-' + id); if (el) el.scrollIntoView({ block: 'start' }); },
   prevM: function () { ui.mOff--; render(); }, nextM: function () { ui.mOff++; render(); }, thisM: function () { ui.mOff = 0; render(); },
   filter: function (id) { ui.filter = id; render(); },
-  chairF: function (id) { ui.cf = id || ''; if (id && (ui.filter === 'ativas' || ui.filter === 'reservas')) ui.filter = 'futuras'; render(); },
   chairPF: function (id) { ui.pf = id; render(); },
-  chairNext: function (id) { ui.filter = 'futuras'; ui.cf = id; ui.q = ''; go('locacoes'); },
+  fichaOpen: function (id) { ui.fid = id; render(); window.scrollTo(0, 0); },
+  fichaBack: function () { ui.fid = ''; render(); window.scrollTo(0, 0); },
+  newRentalWin: function (id, el) { var a = parseInt(el.dataset.start, 10), n = parseInt(el.dataset.n, 10) || 0; openForm('', id, a, n); },
   owed: function () { ui.filter = 'areceber'; ui.q = ''; go('locacoes'); },
   contract: function (id) { ui.opener = document.activeElement; ui.modal = { t: 'contract', id: id }; render(); },
   contractPrint: function () { window.print(); },
@@ -1428,6 +1467,7 @@ document.addEventListener('click', function (e) {
   if (el.dataset.act !== 'backdrop') e.preventDefault();
   fn(el.dataset.id, el, e);
 });
+document.addEventListener('change', function (e) { if (e.target.id === 'cf') { ui.cf = e.target.value; render(); } });
 document.addEventListener('input', function (e) {
   var t = e.target;
   if (t.id === 'q') { ui.q = t.value; $('#locList').innerHTML = locListHtml(); }
