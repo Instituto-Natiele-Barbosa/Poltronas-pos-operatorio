@@ -101,6 +101,33 @@ button.fi:hover{background:#FBF7F0}
 @media (max-width:520px){.fi.gap{flex-wrap:wrap;padding:0 12px 12px 0;row-gap:0}.fi.gap .ftxt{flex:1 1 calc(100% - 30px)}.fi.gap .btn.sm{flex:1 1 100%;margin-left:18px}}
 .winline{display:flex;align-items:center;gap:8px;background:var(--sage-3);color:var(--sage-ink);border-radius:10px;padding:8px 10px;font-size:13.5px;font-weight:600}
 .hist summary{cursor:pointer;font-weight:700;color:#5E4120;min-height:28px}
+.morebox{position:fixed;right:8px;bottom:calc(68px + env(safe-area-inset-bottom));background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(79,59,36,.2);padding:6px;display:flex;flex-direction:column;z-index:30;min-width:170px}
+.morebox button{flex-direction:row!important;justify-content:flex-start!important;gap:12px!important;min-height:50px!important;font-size:15px!important;padding:0 14px!important;border-radius:10px!important;color:var(--ink)!important}
+.morebox button[aria-current="page"]{background:var(--brand-soft)!important;color:var(--brand)!important}
+.fin-b{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);align-items:start}
+@media (max-width:900px){.fin-b{grid-template-columns:minmax(0,1fr)}}
+.fin-kpi .kpi small{display:block!important;font-size:12px}
+.fin-kpi{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:0}
+@media (max-width:820px){.fin-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.fbars{display:flex;align-items:flex-end;gap:14px;height:200px;border-bottom:1px solid var(--line)}
+.fb{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;height:100%;position:relative}
+.fb i{display:block;width:100%;max-width:64px;border-radius:7px 7px 0 0}
+.fb span{position:absolute;bottom:-24px;white-space:nowrap}
+.fbars{margin-bottom:26px}
+.frow{display:grid;grid-template-columns:48px minmax(0,1fr) 78px 44px;gap:10px;align-items:center}
+.mv{display:grid;grid-template-columns:50px minmax(0,1fr) 104px 74px 96px;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line2);padding:11px 0;color:inherit;font-size:14px;min-height:50px}
+.mv:hover{background:#FBF7F0}
+.mv-c{min-width:0}.mv-s{display:none;margin-top:1px}
+.mv-v{text-align:right;color:var(--teal-ink);white-space:nowrap}
+@media (max-width:700px){.mv{grid-template-columns:44px minmax(0,1fr) auto}.mv-x{display:none}.mv-s{display:block}}
+.owe{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;flex-wrap:wrap}
+.owe.late{background:var(--red-bg);border-color:#F0A8A3}
+.owe-b{flex:1 1 150px;min-width:0;text-align:left;background:none;border:0;padding:0;color:inherit;font-size:14px;min-height:44px}
+.rp{font-size:13px}.rp h3{margin:16px 0 6px;font-size:15px}
+.rp-k{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.rp-k div{border:1px solid #CFC2AE;border-radius:8px;padding:8px 10px}.rp-k b{display:block;font-size:16px}.rp-k span{font-size:11.5px;color:#6B6558}
+.rp-t{width:100%;border-collapse:collapse}.rp-t th{text-align:left;font-size:11.5px;color:#6B6558;border-bottom:1px solid #CFC2AE;padding:5px 4px}.rp-t td{padding:5px 4px;border-bottom:1px solid #EFEBE2}
+@media (max-width:600px){.rp-k{grid-template-columns:repeat(2,1fr)}}
 .chaircard{transition:box-shadow .15s}.chaircard:hover{box-shadow:0 4px 14px rgba(79,59,36,.10)}
 .inp,select.inp,textarea.inp{min-height:44px;border:1px solid #CFC2AE;border-radius:10px;padding:8px 12px;font:inherit;background:#fff;color:var(--ink);width:100%}
 textarea.inp{min-height:92px;resize:vertical}
@@ -261,6 +288,7 @@ button,a,.pick{touch-action:manipulation;-webkit-tap-highlight-color:transparent
   #modal .ov{position:static!important;background:none!important;display:block!important;padding:0!important}
   #modal .dlg{outline:0!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;border:0!important;border-radius:0!important;padding:0!important;max-width:none!important;width:100%!important;animation:none!important;background:#fff!important;display:block!important}
   .no-print,.dlg-h{display:none!important}
+  .rp{font-size:10pt}.rp-t td,.rp-t th{padding:3px 4px}
   .ct{border:0;border-radius:0;padding:0;font-size:10.5pt;line-height:1.42}
   .ct-h{margin:12px 0 6px}.ct-p{margin-bottom:4px}.ct-s.l{margin-top:26px}
 }
@@ -378,7 +406,7 @@ function demo() {
   };
 }
 var S = load();
-var ui = { screen: 'hoje', view: (window.matchMedia && window.matchMedia('(max-width:959px)').matches) ? 'lista' : 'linha', mOff: 0, filter: 'ativas', cf: '', pf: 'todas', pq: '', fid: '', q: '', cq: '', modal: null, form: null, toast: null };
+var ui = { screen: 'hoje', view: (window.matchMedia && window.matchMedia('(max-width:959px)').matches) ? 'lista' : 'linha', mOff: 0, more: false, fOff: 0, fAll: false, filter: 'ativas', cf: '', pf: 'todas', pq: '', fid: '', q: '', cq: '', modal: null, form: null, toast: null };
 var toastTimer = null;
 
 /* ---------- cálculo ---------- */
@@ -512,6 +540,8 @@ var IC = {
   hoje: '<rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect>',
   agenda: '<rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path>',
   locacoes: '<path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z"></path><rect x="5" y="6" width="14" height="15" rx="2"></rect><path d="M9 12h6M9 16h4"></path>',
+  mais: '<circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle>',
+  financeiro: '<path d="M3 21h18"></path><rect x="5" y="11" width="3.5" height="8" rx="1"></rect><rect x="10.5" y="6" width="3.5" height="13" rx="1"></rect><rect x="16" y="13" width="3.5" height="6" rx="1"></rect>',
   poltronas: '<path d="M6 11V8a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v3"></path><path d="M4 12a2 2 0 0 1 2 2v3h12v-3a2 2 0 1 1 4 0v5H2v-5a2 2 0 0 1 2-2z"></path><path d="M6 21v-2M18 21v-2"></path>',
   clientes: '<circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2.2.6 3.5 2.6 3.5 6"></path>',
   ajustes: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path>',
@@ -661,10 +691,10 @@ function gateHtml(err) {
     '<form id="gateForm" class="stack" autocomplete="off"><input class="inp" id="g-code" type="password" required placeholder="Código" autocapitalize="off" autocorrect="off" spellcheck="false"><div id="gateErr" class="small" role="alert" style="color:var(--red-ink);font-weight:600">' + esc(err || '') + '</div><button class="btn" type="submit" id="gateBtn">Entrar</button></form></div></div>';
 }
 
-var NAV = [['hoje', 'Hoje'], ['agenda', 'Agenda'], ['locacoes', 'Locações'], ['poltronas', 'Poltronas'], ['clientes', 'Clientes'], ['ajustes', 'Ajustes']];
+var NAV = [['hoje', 'Hoje'], ['agenda', 'Agenda'], ['locacoes', 'Locações'], ['poltronas', 'Poltronas'], ['financeiro', 'Financeiro'], ['clientes', 'Clientes'], ['ajustes', 'Ajustes']];
 var TITLES = {
   hoje: ['Hoje', ''], agenda: ['Agenda', 'Quem está com cada poltrona e quando ela volta'], locacoes: ['Locações', 'Em andamento, reservadas e encerradas'],
-  poltronas: ['Poltronas', 'Situação e disponibilidade de cada uma'], clientes: ['Clientes', 'Histórico e pontualidade nas devoluções'], ajustes: ['Ajustes', 'Valores padrão, mensagens e cópia de segurança']
+  poltronas: ['Poltronas', 'Situação e disponibilidade de cada uma'], financeiro: ['Financeiro', 'Quanto entrou, quanto falta receber e o que cada poltrona rende'], clientes: ['Clientes', 'Histórico e pontualidade nas devoluções'], ajustes: ['Ajustes', 'Valores padrão, mensagens e cópia de segurança']
 };
 
 /* ---------- telas ---------- */
@@ -748,9 +778,9 @@ function taskRow(r, k, kind, when, act, cta, wa) {
 }
 
 /* agenda */
-function monthInfo() {
+function monthInfo(off) {
   var t = new Date(C.T * MS);
-  var base = Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + ui.mOff, 1);
+  var base = Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + (off == null ? ui.mOff : off), 1);
   var m0 = Math.round(base / MS), b = new Date(base);
   var n = new Date(Date.UTC(b.getUTCFullYear(), b.getUTCMonth() + 1, 0)).getUTCDate();
   return { m0: m0, n: n, m1: m0 + n - 1, label: MN[b.getUTCMonth()].charAt(0).toUpperCase() + MN[b.getUTCMonth()].slice(1) + ' de ' + b.getUTCFullYear() };
@@ -897,6 +927,93 @@ function viewLocacoes() {
 }
 
 /* poltronas */
+var METHODS = ['PIX', 'Dinheiro', 'Cartão', 'Transferência', 'Outro'];
+function methodSelect(id, val) {
+  return '<select class="inp" id="' + id + '"><option value="">Não informada</option>' + METHODS.map(function (m) { return '<option' + (val === m ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select>';
+}
+function payDlg(r) {
+  var due = r.due || r.total;
+  return dlg('Receber pagamento', '<form id="payForm" data-id="' + r.id + '" class="stack"><div><b>' + esc(r.client) + '</b> · ' + esc(r.code) + '<div class="muted small">Valor a receber agora</div><div class="big">' + brl(due) + '</div></div>' +
+    '<div class="fgrid"><div class="field"><label class="l" for="p-date">Data do pagamento</label><input class="inp" id="p-date" type="date" value="' + d2i(C.T) + '"></div><div class="field"><label class="l" for="p-method">Forma de pagamento</label>' + methodSelect('p-method', 'PIX') + '</div></div>' +
+    '<div class="row"><button type="submit" class="btn">Confirmar recebimento</button><button type="button" class="btn2" data-act="closeModal">Cancelar</button></div></form>');
+}
+/* lançamentos de dinheiro: entrada e pagamento final de cada locação */
+function payEvents() {
+  var out = [];
+  C.R.forEach(function (r) {
+    var en = +r.entry || 0;
+    if (en > 0) out.push({ r: r, date: r.entryDate ? i2d(r.entryDate) : r.s, type: 'Entrada', method: r.entryMethod || '', amount: en });
+    if (r.paid) {
+      var rest = Math.max(0, r.total - en);
+      if (rest > 0) out.push({ r: r, date: r.paidDate ? i2d(r.paidDate) : (r.ret != null ? r.ret : Math.min(r.e, C.T)), type: en > 0 ? 'Pagamento final' : 'Pagamento', method: r.paidMethod || '', amount: rest });
+    }
+  });
+  return out;
+}
+function finData(off) {
+  var M = monthInfo(off), all = payEvents();
+  var ev = all.filter(function (e) { return e.date >= M.m0 && e.date <= M.m1; }).sort(function (a, b) { return b.date - a.date; });
+  var recebido = ev.reduce(function (a, e) { return a + e.amount; }, 0);
+  var pM = monthInfo(off - 1), prev = all.filter(function (e) { return e.date >= pM.m0 && e.date <= pM.m1; }).reduce(function (a, e) { return a + e.amount; }, 0);
+  var owed = C.R.filter(function (r) { return !r.paid && r.st !== 'reserva' && r.due > 0; }).sort(function (a, b) { return (b.st === 'atrasada') - (a.st === 'atrasada') || b.due - a.due; });
+  var aRec = owed.reduce(function (a, r) { return a + r.due; }, 0);
+  var started = C.R.filter(function (r) { return r.s >= M.m0 && r.s <= M.m1; });
+  var avg = started.length ? started.reduce(function (a, r) { return a + r.total; }, 0) / started.length : 0;
+  var weeks = []; for (var d = M.m0; d <= M.m1; d += 7) { var e2 = Math.min(d + 6, M.m1); weeks.push({ a: d, b: e2, v: ev.filter(function (e) { return e.date >= d && e.date <= e2; }).reduce(function (s2, e) { return s2 + e.amount; }, 0) }); }
+  var chairs = C.CH.map(function (c) {
+    var v = ev.filter(function (e) { return e.r.chair === c.id; }).reduce(function (a, e) { return a + e.amount; }, 0), occ = 0;
+    for (var x = M.m0; x <= M.m1; x++) if (C.R.some(function (r) { return r.chair === c.id && r.s <= x && x <= r.de + r.late; })) occ++;
+    return { c: c, v: v, occ: Math.round(occ / M.n * 100) };
+  });
+  return { M: M, ev: ev, recebido: recebido, prev: prev, owed: owed, aRec: aRec, started: started, avg: avg, weeks: weeks, chairs: chairs };
+}
+function cobrarLink(r) {
+  var n = waNumber(r.phone), msg = 'Olá, ' + r.client.split(' ')[0] + '! Aqui é do ' + S.config.empresa + '. Consta um saldo de ' + brl(r.due) + ' referente à locação da poltrona ' + r.code + ' (retirada em ' + fd(r.e) + '). Pode me confirmar o pagamento? Obrigada!';
+  return 'https://wa.me/' + (n || '') + '?text=' + encodeURIComponent(msg);
+}
+function viewFinanceiro() {
+  if (!S.chairs.length) return emptyChairs();
+  var F = finData(ui.fOff), M = F.M, cur = ui.fOff === 0;
+  var delta = F.prev > 0 ? Math.round((F.recebido - F.prev) / F.prev * 100) : null;
+  var mx = Math.max.apply(null, F.weeks.map(function (w) { return w.v; }).concat([1]));
+  var mc = Math.max.apply(null, F.chairs.map(function (x) { return x.v; }).concat([1]));
+  var nav = '<div class="row" style="flex-wrap:nowrap"><button class="btn2" type="button" aria-label="Mês anterior" data-act="prevF" style="padding:0 12px">' + ic(IC.left, 18) + '</button><div style="min-width:150px;text-align:center;font-weight:700;font-size:16px">' + M.label + '</div><button class="btn2" type="button" aria-label="Próximo mês" data-act="nextF" style="padding:0 12px">' + ic(IC.right, 18) + '</button>' + (cur ? '' : '<button class="btn2" type="button" data-act="thisF">Este mês</button>') + '</div>';
+  var kpi = function (bg, bd, ink, big, t, sub) { return '<div class="kpi" style="background:' + bg + ';border-color:' + bd + ';color:' + ink + '"><b>' + big + '</b><span>' + t + '</span><small>' + sub + '</small></div>'; };
+  var cards = '<div class="grid g-kpi fin-kpi">' +
+    kpi('#E1ECE1', '#97B49F', '#2B5440', brl(F.recebido), 'Recebido no mês', pl(F.ev.length, 'pagamento', 'pagamentos') + (delta === null ? '' : ' · ' + (delta >= 0 ? '+' : '') + delta + '% que o mês anterior')) +
+    kpi('#FBEFC9', '#E8CF84', '#4D3500', brl(F.aRec), 'A receber agora', pl(F.owed.length, 'locação pendente', 'locações pendentes')) +
+    (cur ? kpi('#F3E9DB', '#D9C2A0', '#5E4120', brl(F.recebido + F.aRec), 'Previsto no mês', 'recebido + a receber') : kpi('#F3E9DB', '#D9C2A0', '#5E4120', String(F.started.length), 'Locações iniciadas', 'neste mês')) +
+    kpi('#fff', 'var(--line)', 'var(--ink)', F.started.length ? brl(F.avg) : '—', 'Valor médio por locação', pl(F.started.length, 'locação iniciada', 'locações iniciadas')) + '</div>';
+  var chart = '<section class="card stack" style="gap:12px"><div class="row" style="justify-content:space-between"><h2>Recebido por semana</h2><span class="muted small">em reais</span></div><div class="fbars">' + F.weeks.map(function (w) {
+    return '<div class="fb"><b class="small">' + (w.v ? Math.round(w.v).toLocaleString('pt-BR') : '0') + '</b><i style="height:' + Math.max(w.v ? 6 : 2, Math.round(w.v / mx * 140)) + 'px;background:' + (w.v ? 'var(--blue)' : '#E4E0D6') + '"></i><span class="muted small">' + new Date(w.a * MS).getUTCDate() + ' a ' + new Date(w.b * MS).getUTCDate() + '</span></div>';
+  }).join('') + '</div></section>';
+  var zero = F.chairs.filter(function (x) { return !x.v; }).map(function (x) { return x.c.code; });
+  var rend = '<section class="card stack" style="gap:12px"><div class="row" style="justify-content:space-between"><h2>O que cada poltrona rende</h2><span class="muted small">receita · ocupação</span></div>' + F.chairs.map(function (x) {
+    return '<div class="frow"><b>' + esc(x.c.code) + '</b><div class="bar"><i style="width:' + Math.round(x.v / mc * 100) + '%;background:var(--blue)"></i></div><b style="text-align:right">' + brl(x.v).replace(',00', '') + '</b><span class="muted small" style="text-align:right">' + x.occ + '%</span></div>';
+  }).join('') + (zero.length && F.recebido > 0 ? '<div class="alert amber" style="padding:9px 12px;font-size:13px">Sem receita neste mês: ' + esc(zero.join(', ')) + '.</div>' : '') + '</section>';
+  var shown = ui.fAll ? F.ev : F.ev.slice(0, 8);
+  var mov = '<section class="card stack" style="gap:6px"><div class="row" style="justify-content:space-between"><h2>Movimentação</h2><span class="muted small">' + pl(F.ev.length, 'lançamento', 'lançamentos') + ' no mês</span></div>' +
+    (F.ev.length ? shown.map(function (e) {
+      return '<button type="button" class="mv" data-act="open" data-id="' + e.r.id + '"><span class="mv-d">' + fd(e.date) + '</span><span class="mv-c"><b>' + esc(e.r.client) + '</b> <span class="muted">· ' + esc(e.r.code) + '</span><span class="mv-s muted small">' + e.type + (e.method ? ' · ' + esc(e.method) : '') + '</span></span><span class="mv-x">' + e.type + '</span><span class="mv-x muted">' + (esc(e.method) || '—') + '</span><b class="mv-v">+ ' + brl(e.amount) + '</b></button>';
+    }).join('') + (F.ev.length > 8 ? '<button type="button" class="btn2" data-act="finAll" style="margin-top:6px">' + (ui.fAll ? 'Mostrar só os 8 mais recentes' : 'Ver todos os ' + F.ev.length + ' lançamentos') + '</button>' : '') : '<div class="muted" style="padding:10px 0">Nenhum pagamento neste mês. Quando você marcar um pagamento como recebido ou registrar uma entrada, ele aparece aqui.</div>') + '</section>';
+  var deve = '<section class="card stack" style="gap:10px"><div class="row" style="justify-content:space-between"><h2>Quem ainda deve</h2><b>' + brl(F.aRec) + '</b></div>' +
+    (F.owed.length ? F.owed.map(function (r) {
+      var late = r.st === 'atrasada';
+      return '<div class="owe' + (late ? ' late' : '') + '"><button type="button" class="owe-b" data-act="open" data-id="' + r.id + '"><b>' + esc(r.client) + '</b> <span class="muted">· ' + esc(r.code) + '</span><span class="small" style="display:block;color:' + (late ? 'var(--red-ink)' : 'var(--muted)') + '">' + (late ? 'Em atraso: ' + pl(r.late, 'dia', 'dias') + ' de diária extra' : r.st === 'encerrada' ? 'Locação encerrada' : 'Retirada em ' + fd(r.e)) + (r.entry > 0 ? ' · entrada de ' + brl(r.entry) + ' paga' : '') + '</span></button><b>' + brl(r.due) + '</b><a class="' + (late ? 'btn' : 'btn2') + ' sm" target="_blank" rel="noopener noreferrer" href="' + cobrarLink(r) + '">Cobrar</a></div>';
+    }).join('') + '<div class="muted small">“Cobrar” abre o WhatsApp com a mensagem e o valor prontos.</div>' : '<div class="alert teal">Nenhum pagamento pendente. Tudo em dia.</div>') + '</section>';
+  return '<div class="stack" style="gap:14px"><div class="row" style="justify-content:space-between">' + nav + '<div class="row"><button type="button" class="btn2" data-act="finReport">Relatório em PDF</button><button type="button" class="btn2" data-act="finCsv">Baixar planilha</button></div></div>' + cards +
+    '<div class="grid g-2">' + chart + rend + '</div><div class="grid fin-b">' + mov + deve + '</div></div>';
+}
+function reportHtml() {
+  var F = finData(ui.fOff), M = F.M, cur = ui.fOff === 0, tb = function (head, rows) { return '<table class="rp-t"><thead><tr>' + head.map(function (h, i) { return '<th' + (i === head.length - 1 ? ' style="text-align:right"' : '') + '>' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + rows + '</tbody></table>'; };
+  var td = function (a) { return '<tr>' + a.map(function (v, i) { return '<td' + (i === a.length - 1 ? ' style="text-align:right"' : '') + '>' + v + '</td>'; }).join('') + '</tr>'; };
+  return '<div class="rp"><div class="row no-print"><button type="button" class="btn" data-act="contractPrint">Imprimir ou salvar em PDF</button></div>' +
+    '<h1 style="font-size:22px;margin:10px 0 2px">Relatório financeiro · ' + M.label + '</h1><div class="muted small">' + esc(S.config.empresa) + ' · emitido em ' + fdl(C.T) + '</div>' +
+    '<div class="rp-k"><div><b>' + brl(F.recebido) + '</b><span>Recebido no mês</span></div><div><b>' + brl(F.aRec) + '</b><span>A receber hoje</span></div><div><b>' + (cur ? brl(F.recebido + F.aRec) : String(F.started.length)) + '</b><span>' + (cur ? 'Previsto no mês' : 'Locações iniciadas') + '</span></div><div><b>' + (F.started.length ? brl(F.avg) : '—') + '</b><span>Valor médio por locação</span></div></div>' +
+    '<h3>Receita por poltrona</h3>' + tb(['Poltrona', 'Ocupação', 'Receita'], F.chairs.map(function (x) { return td([esc(x.c.code), x.occ + '%', brl(x.v)]); }).join('')) +
+    '<h3>Movimentação (' + F.ev.length + ')</h3>' + (F.ev.length ? tb(['Data', 'Cliente', 'Poltrona', 'Tipo', 'Forma', 'Valor'], F.ev.slice().sort(function (a, b) { return a.date - b.date; }).map(function (e) { return td([fdl(e.date), esc(e.r.client), esc(e.r.code), e.type, esc(e.method || '—'), brl(e.amount)]); }).join('')) : '<p>Nenhum pagamento neste mês.</p>') +
+    '<h3>Pendências em aberto</h3>' + (F.owed.length ? tb(['Cliente', 'Poltrona', 'Situação', 'Saldo'], F.owed.map(function (r) { return td([esc(r.client), esc(r.code), r.st === 'atrasada' ? 'Em atraso' : r.st === 'encerrada' ? 'Encerrada' : 'Retirada ' + fd(r.e), brl(r.due)]); }).join('')) : '<p>Nenhuma pendência.</p>') + '</div>';
+}
 var DOT = { livre: 'var(--teal)', ativa: 'var(--blue)', proxima: 'var(--amber)', atrasada: 'var(--red)', higiene: 'var(--sage)', manut: '#B9AFA3' };
 function viewPoltronas() {
   if (!S.chairs.length) return emptyChairs();
@@ -1210,7 +1327,7 @@ function rentalForm(f) {
     '<div class="row" id="durs"></div>' +
     '<div class="fgrid f2"><div class="field"><label class="l" for="r-tin">Hora da entrega <span class="muted small" style="font-weight:400">(opcional)</span></label><input class="inp" id="r-tin" type="time" value="' + esc(f.tIn || '') + '"></div><div class="field"><label class="l" for="r-tout">Hora da retirada <span class="muted small" style="font-weight:400">(opcional)</span></label><input class="inp" id="r-tout" type="time" value="' + esc(f.tOut || '') + '"></div></div>' +
     '<div class="fgrid f2"><div class="field"><label class="l" for="r-price">Valor da locação (R$)</label><input class="inp" id="r-price" type="number" min="0" step="0.01" inputmode="decimal" value="' + esc(f.price) + '"><div id="priceHint" class="muted small" style="margin-top:4px"></div></div><div class="field"><label class="l" for="r-frete">Frete (R$)</label><input class="inp" id="r-frete" type="number" min="0" step="0.01" inputmode="decimal" value="' + esc(f.frete) + '" placeholder="0,00"></div></div>' +
-    '<div class="fgrid f2"><div class="field"><label class="l" for="r-entry">Entrada já paga (R$)</label><input class="inp" id="r-entry" type="number" min="0" step="0.01" inputmode="decimal" value="' + esc(f.entry) + '" placeholder="0,00"></div><div class="field"><label class="l" for="r-entrydate">Data da entrada</label><input class="inp" id="r-entrydate" type="date" value="' + esc(f.entryDate || '') + '"></div></div>' +
+    '<div class="fgrid f2"><div class="field"><label class="l" for="r-entry">Entrada já paga (R$)</label><input class="inp" id="r-entry" type="number" min="0" step="0.01" inputmode="decimal" value="' + esc(f.entry) + '" placeholder="0,00"></div><div class="field"><label class="l" for="r-entrydate">Data da entrada</label><input class="inp" id="r-entrydate" type="date" value="' + esc(f.entryDate || '') + '"></div><div class="field"><label class="l" for="r-entrym">Forma da entrada</label>' + methodSelect('r-entrym', f.entryMethod) + '</div></div>' +
     '<div class="fgrid"><div class="field"><label class="l" for="r-rate">Diária extra por atraso (R$)</label><input class="inp" id="r-rate" type="number" min="0" step="0.01" value="' + esc(f.rate) + '"></div><div class="field"><label class="l" for="r-note">Observação</label><input class="inp" id="r-note" value="' + esc(f.note) + '" placeholder="Opcional"></div></div>' +
     '<label class="row small" style="gap:10px"><input type="checkbox" id="r-deliv" style="width:22px;height:22px"' + (f.delivered ? ' checked' : '') + '> <span>A poltrona já foi entregue</span></label>' +
     '<label class="row small" style="gap:10px"><input type="checkbox" id="r-paid" style="width:22px;height:22px"' + (f.paid ? ' checked' : '') + '> <span>Pagamento já recebido</span></label>' +
@@ -1226,6 +1343,8 @@ function renderModal() {
   if (m) {
     if (m.t === 'detail') { var r = C.R.filter(function (x) { return x.id === m.id; })[0]; if (r) h = detailHtml(r); else ui.modal = null; }
     else if (m.t === 'contract') { var cr = C.R.filter(function (x) { return x.id === m.id; })[0]; if (cr) h = contractModal(cr); else ui.modal = null; }
+    else if (m.t === 'pay') { var pr = C.R.filter(function (x) { return x.id === m.id; })[0]; if (pr) h = payDlg(pr); else ui.modal = null; }
+    else if (m.t === 'report') h = dlg('Relatório financeiro', reportHtml(), 'Relatório financeiro');
     else if (m.t === 'gate') h = gateHtml(m.err);
     else if (m.t === 'rental') h = rentalForm(ui.form);
     else if (m.t === 'chair') h = chairForm(m.id ? S.chairs.filter(function (c) { return c.id === m.id; })[0] : null, m.code);
@@ -1292,14 +1411,16 @@ function render() {
   var navBtn = function (n, size) { return '<button type="button" data-act="nav" data-id="' + n[0] + '"' + (s === n[0] ? ' aria-current="page"' : '') + '>' + ic(IC[n[0]], size) + '<span>' + n[1] + '</span></button>'; };
   $('#side').innerHTML = '<div class="logo"><img src="' + IMG.v + '" alt="Instituto Natiéle Barbosa"><small>Controle de poltronas</small></div><nav aria-label="Menu principal">' + NAV.map(function (n) { return navBtn(n, 22); }).join('') + '</nav>' +
     '<div style="margin-top:auto;padding:12px 14px;border-radius:14px;background:var(--sage-3);font-size:13px;color:var(--sage-ink)">' + '<span id="syncSide">' + storeNote() + '</span></div>';
-  $('#bottom').innerHTML = NAV.map(function (n) { return navBtn(n, 22); }).join('');
-  var body = s === 'hoje' ? viewHoje() : s === 'agenda' ? viewAgenda() : s === 'locacoes' ? viewLocacoes() : s === 'poltronas' ? viewPoltronas() : s === 'clientes' ? viewClientes() : viewAjustes();
+  var inMore = s === 'clientes' || s === 'ajustes';
+  $('#bottom').innerHTML = NAV.slice(0, 5).map(function (n) { return navBtn(n, 22); }).join('') + '<button type="button" data-act="more" aria-expanded="' + !!ui.more + '"' + (inMore ? ' aria-current="page"' : '') + '>' + ic(IC.mais, 22) + '<span>Mais</span></button>' +
+    (ui.more ? '<div class="morebox" role="menu"><button type="button" role="menuitem" data-act="nav" data-id="clientes"' + (s === 'clientes' ? ' aria-current="page"' : '') + '>' + ic(IC.clientes, 22) + '<span>Clientes</span></button><button type="button" role="menuitem" data-act="nav" data-id="ajustes"' + (s === 'ajustes' ? ' aria-current="page"' : '') + '>' + ic(IC.ajustes, 22) + '<span>Ajustes</span></button></div>' : '');
+  var body = s === 'hoje' ? viewHoje() : s === 'agenda' ? viewAgenda() : s === 'locacoes' ? viewLocacoes() : s === 'poltronas' ? viewPoltronas() : s === 'financeiro' ? viewFinanceiro() : s === 'clientes' ? viewClientes() : viewAjustes();
   var banner = S.demo ? '<div class="banner"><span><b>Dados de exemplo.</b> As datas acompanham o dia de hoje. Mexa à vontade.</span><button type="button" class="btn2" data-act="wipe" style="min-height:40px">Começar do zero</button></div>' : '';
   $('#main').innerHTML = banner + '<div class="mlogo"><img src="' + IMG.h + '" alt="Instituto Natiéle Barbosa">' + (cloud.on ? '<span id="syncPill" class="sync s-' + cloud.st + '">' + SYNC_TXT[cloud.st] + '</span>' : '') + '</div><div class="top"><div><h1>' + TITLES[s][0] + '</h1>' + (sub ? '<div class="muted" style="margin-top:4px">' + esc(sub) + '</div>' : '') + '</div><button type="button" class="btn" data-act="newRental" id="topNew">+ Nova locação</button></div>' + body;
   $('#fab').style.display = ui.modal ? 'none' : '';
   renderModal();
 }
-function go(s) { ui.screen = s; ui.modal = null; try { if (location.hash !== '#' + s) history.replaceState(null, '', '#' + s); } catch (e) { } render(); window.scrollTo(0, 0); }
+function go(s) { ui.screen = s; ui.modal = null; ui.more = false; try { if (location.hash !== '#' + s) history.replaceState(null, '', '#' + s); } catch (e) { } render(); window.scrollTo(0, 0); }
 
 /* ---------- ações ---------- */
 function syncDelivered() {
@@ -1310,8 +1431,8 @@ function syncDelivered() {
 function rentalById(id) { return S.rentals.filter(function (r) { return r.id === id; })[0]; }
 function openForm(rid, chairId, startDay, maxDays) {
   var T = C.T, r = rid ? rentalById(rid) : null;
-  ui.form = r ? { id: r.id, client: r.client, phone: r.phone, addr: r.addr, start: r.start, tIn: r.tIn || '', tOut: r.tOut || '', days: i2d(r.end) - i2d(r.start), rate: r.rate, price: r.price != null && r.price !== '' ? r.price : (i2d(r.end) - i2d(r.start)) * r.rate, priceTouched: true, frete: r.frete || '', entry: r.entry || '', entryDate: r.entryDate || '', cpf: r.cpf || '', city: r.city || '', note: r.note || '', delivered: r.delivered, paid: !!r.paid, chair: r.chair, delTouched: true }
-    : { id: '', client: '', phone: '', addr: '', start: d2i(T), tIn: '', tOut: '', days: +S.config.days || 15, rate: S.config.rate, price: calcPrice(+S.config.days || 15), priceTouched: false, frete: '', entry: '', entryDate: '', cpf: '', city: '', note: '', delivered: false, paid: false, chair: chairId || '', delTouched: false };
+  ui.form = r ? { id: r.id, client: r.client, phone: r.phone, addr: r.addr, start: r.start, tIn: r.tIn || '', tOut: r.tOut || '', days: i2d(r.end) - i2d(r.start), rate: r.rate, price: r.price != null && r.price !== '' ? r.price : (i2d(r.end) - i2d(r.start)) * r.rate, priceTouched: true, frete: r.frete || '', entry: r.entry || '', entryDate: r.entryDate || '', entryMethod: r.entryMethod || '', paidDate: r.paidDate || '', paidMethod: r.paidMethod || '', cpf: r.cpf || '', city: r.city || '', note: r.note || '', delivered: r.delivered, paid: !!r.paid, chair: r.chair, delTouched: true }
+    : { id: '', client: '', phone: '', addr: '', start: d2i(T), tIn: '', tOut: '', days: +S.config.days || 15, rate: S.config.rate, price: calcPrice(+S.config.days || 15), priceTouched: false, frete: '', entry: '', entryDate: '', entryMethod: '', paidDate: '', paidMethod: '', cpf: '', city: '', note: '', delivered: false, paid: false, chair: chairId || '', delTouched: false };
   if (!r && startDay) { var dd = +S.config.days || 15; if (maxDays > 0) dd = Math.min(dd, maxDays); ui.form.start = d2i(startDay); ui.form.days = dd; ui.form.price = calcPrice(dd); }
   ui.modal = { t: 'rental' }; render();
 }
@@ -1374,8 +1495,22 @@ var H = {
   },
   returnOk: function (id) { H.return(id, null, null, true); },
   pay: function (id) {
-    var r = rentalById(id); if (!r) return; r.paid = !r.paid; save(); render();
-    say(r.paid ? 'Pagamento de ' + r.client + ' marcado como recebido.' : 'Pagamento de ' + r.client + ' voltou para "a receber".');
+    var r = rentalById(id); if (!r) return;
+    if (!r.paid) { ui.modal = { t: 'pay', id: id }; render(); return; }
+    r.paid = false; r.paidDate = ''; r.paidMethod = ''; save(); render();
+    say('Pagamento de ' + r.client + ' voltou para "a receber".');
+  },
+  more: function () { ui.more = !ui.more; render(); },
+  prevF: function () { ui.fOff--; ui.fAll = false; render(); }, nextF: function () { ui.fOff++; ui.fAll = false; render(); }, thisF: function () { ui.fOff = 0; ui.fAll = false; render(); },
+  finAll: function () { ui.fAll = !ui.fAll; render(); },
+  finReport: function () { ui.modal = { t: 'report' }; render(); },
+  finCsv: function () {
+    var M = monthInfo(ui.fOff), ev = payEvents().filter(function (e) { return e.date >= M.m0 && e.date <= M.m1; }).sort(function (a, b) { return a.date - b.date; });
+    var q = function (v) { v = String(v == null ? '' : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var lines = [['Data', 'Cliente', 'Poltrona', 'Tipo', 'Forma', 'Valor (R$)'].join(';')].concat(ev.map(function (e) { return [fdl(e.date), e.r.client, e.r.code, e.type, e.method || '', (Math.round(e.amount * 100) / 100).toFixed(2).replace('.', ',')].map(q).join(';'); }));
+    var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'movimentacao-' + d2i(M.m0).slice(0, 7) + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    say('Planilha da movimentação de ' + M.label + ' baixada. Abre no Excel e no Google Planilhas.');
   },
   useDate: function (id, el) { $('#r-start').value = id; if (el.dataset.chair) ui.form.chair = el.dataset.chair; syncDelivered(); refreshForm(); },
   extend: function (id, el) {
@@ -1502,13 +1637,19 @@ document.addEventListener('submit', function (e) {
     var startV = $('#r-start').value, days = Math.max(1, parseInt($('#r-days').value, 10) || 1), s = i2d(startV), en = s + days;
     var cf = conflict(ui.form.chair, s, en, ui.form.id) || chairBlocked(ui.form.chair, ui.form.id);
     if (!$('#r-client').value.trim() || !ui.form.chair || cf) { refreshForm(); return; }
-    var data = { chair: ui.form.chair, client: $('#r-client').value.trim(), phone: $('#r-phone').value.trim(), addr: $('#r-addr').value.trim(), start: startV, end: d2i(en), tIn: $('#r-tin').value, tOut: $('#r-tout').value, rate: parseFloat($('#r-rate').value) || 0, price: Math.max(0, parseFloat($('#r-price').value) || 0), frete: Math.max(0, parseFloat($('#r-frete').value) || 0), entry: Math.max(0, parseFloat($('#r-entry').value) || 0), entryDate: $('#r-entrydate').value || '', cpf: fmtCpf($('#r-cpf').value), city: $('#r-city').value.trim(), delivered: $('#r-deliv').checked, paid: $('#r-paid').checked, note: $('#r-note').value.trim() };
+    var data = { chair: ui.form.chair, client: $('#r-client').value.trim(), phone: $('#r-phone').value.trim(), addr: $('#r-addr').value.trim(), start: startV, end: d2i(en), tIn: $('#r-tin').value, tOut: $('#r-tout').value, rate: parseFloat($('#r-rate').value) || 0, price: Math.max(0, parseFloat($('#r-price').value) || 0), frete: Math.max(0, parseFloat($('#r-frete').value) || 0), entry: Math.max(0, parseFloat($('#r-entry').value) || 0), entryDate: $('#r-entrydate').value || '', entryMethod: $('#r-entrym').value || '', cpf: fmtCpf($('#r-cpf').value), city: $('#r-city').value.trim(), delivered: $('#r-deliv').checked, paid: $('#r-paid').checked, note: $('#r-note').value.trim() };
     var rec;
     if (ui.form.id) { rec = rentalById(ui.form.id); Object.assign(rec, data); }
     else { rec = Object.assign({ id: uid(), returnedOn: null, avisos: {} }, data); S.rentals.push(rec); }
+    if (rec.paid && !rec.paidDate) { rec.paidDate = d2i(C.T); rec.paidMethod = rec.paidMethod || rec.entryMethod || ''; }
+    if (!rec.paid) { rec.paidDate = ''; rec.paidMethod = ''; }
     var wasEdit = !!ui.form.id; ui.modal = null; ui.form = null; save(); render();
     var rr = C.R.filter(function (x) { return x.id === rec.id; })[0];
     say((wasEdit ? 'Locação atualizada: ' : 'Locação salva: ') + rr.code + ' para ' + rr.client + ', de ' + fd(rr.s) + ' a ' + fd(rr.e) + '. Retirada marcada.', [{ href: gcal(rr), label: 'Colocar a retirada no Google Agenda' }].concat(waLink(rr, 'entrega') ? [{ href: waLink(rr, 'entrega'), label: 'Confirmar a entrega no WhatsApp' }] : []));
+  } else if (f.id === 'payForm') {
+    var pr2 = rentalById(f.dataset.id); if (!pr2) return;
+    pr2.paid = true; pr2.paidDate = $('#p-date').value || d2i(C.T); pr2.paidMethod = $('#p-method').value || '';
+    ui.modal = null; save(); render(); say('Pagamento de ' + pr2.client + ' marcado como recebido.');
   } else if (f.id === 'gateForm') {
     var cd = $('#g-code').value.trim(); if (!cd) return;
     cloud.code = cd; $('#gateBtn').disabled = true; $('#gateBtn').textContent = 'Entrando…'; cloudBoot();
